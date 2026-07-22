@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}首页 - 应急决策教学系统{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <h2>应急决策教学系统</h2>
+  <div class="actions">
+    <a href="/editor" class="btn btn-primary">创建场景</a>
+    <a href="/decision" class="btn btn-success">开始决策</a>
+  </div>
+</div>
+
+<!-- 系统介绍 -->
+<div class="card">
+  <div class="card-header">
+    <h3>系统概述</h3>
+  </div>
+  <p style="color: var(--text-secondary); margin-bottom: 16px;">
+    基于第三方物流公司业务场景，模拟运输途中遭遇地震、暴雨、台风等突发事件时，
+    通过智能体提前预测风险并做出最优决策，最大限度减少损失。
+    系统围绕"教-学-育-评"四支柱构建完整教学闭环。
+  </p>
+  <div class="stat-grid" style="margin-bottom: 0;">
+    <div class="stat-card">
+      <div class="stat-icon" style="background: var(--accent-bg); color: var(--accent);">📚</div>
+      <div>
+        <div class="stat-value">教</div>
+        <div class="stat-label">场景编辑器 - 发布应急场景、设置参数</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: var(--success-bg); color: var(--success);">⚡</div>
+      <div>
+        <div class="stat-value">学</div>
+        <div class="stat-label">学生决策 - 倒计时+地图+方案选择</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: var(--warning-bg); color: var(--warning);">📊</div>
+      <div>
+        <div class="stat-value">育</div>
+        <div class="stat-label">素养画像 - 风险意识+系统思维+决策韧性</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: var(--danger-bg); color: var(--danger);">📋</div>
+      <div>
+        <div class="stat-value">评</div>
+        <div class="stat-label">自动评分+评语+决策路径分析</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 三种策略 -->
+<div class="card">
+  <div class="card-header">
+    <h3>三种教学策略</h3>
+  </div>
+  <div class="grid-3">
+    <div style="padding: 20px; border-radius: 12px; background: var(--accent-bg);">
+      <div style="font-size: 32px; margin-bottom: 8px;">⏱️</div>
+      <h4 style="color: var(--accent);">策略一：人机竞速</h4>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-top: 8px;">
+        黄金10分钟倒计时，学生先决策，系统再亮出AI方案并排对比。
+        锻炼信息不完全下的快速决策直觉和风险预判能力。
+      </p>
+    </div>
+    <div style="padding: 20px; border-radius: 12px; background: var(--warning-bg);">
+      <div style="font-size: 32px; margin-bottom: 8px;">⚔️</div>
+      <h4 style="color: var(--warning);">策略二：智能体对抗</h4>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-top: 8px;">
+        AI生成最优方案后，系统额外生成隐藏干扰因素，仅学生可见。
+        培养批判性思维，让学生明白AI不是万能的。
+      </p>
+    </div>
+    <div style="padding: 20px; border-radius: 12px; background: var(--danger-bg);">
+      <div style="font-size: 32px; margin-bottom: 8px;">💰</div>
+      <h4 style="color: var(--danger);">策略三：有限预算</h4>
+      <p style="font-size: 13px; color: var(--text-secondary); margin-top: 8px;">
+        学生账户资源只有AI方案的40%，必须在受限前提下做取舍。
+        锻炼资源约束下的多目标优化和"做减法"能力。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- 场景列表 -->
+<div class="card">
+  <div class="card-header">
+    <h3>可用场景</h3>
+    <a href="/editor" class="btn btn-primary btn-sm">+ 新建场景</a>
+  </div>
+  <table class="data-table" id="scenario-table">
+    <thead>
+      <tr>
+        <th>场景ID</th>
+        <th>场景名称</th>
+        <th>灾害类型</th>
+        <th>策略模式</th>
+        <th>规模</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="scenario-list">
+      <tr><td colspan="6" class="text-center text-muted">加载中...</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadScenarios() {
+  try {
+    const scenarios = await API.get('/api/scenarios');
+    const tbody = document.getElementById('scenario-list');
+    if (!scenarios.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">暂无场景，请点击"新建场景"创建</td></tr>';
+      return;
+    }
+    tbody.innerHTML = scenarios.map(s => `
+      <tr>
+        <td><span class="tag tag-gray">${s.scenario_id}</span></td>
+        <td class="font-bold">${s.scenario_name || '未命名'}</td>
+        <td><span class="tag tag-red">${getDisasterName(s.disaster_type)}</span></td>
+        <td><span class="tag tag-purple">${getStrategyName(s.strategy_mode)}</span></td>
+        <td class="text-sm text-muted">
+          ${s.node_count || 0}节点 / ${s.road_count || 0}路段<br>
+          ${s.vehicle_count || 0}车 / ${s.warehouse_count || 0}仓 / ${s.cargo_count || 0}货
+        </td>
+        <td class="action-btns">
+          <a href="/decision?scenario=${s.scenario_id}" class="btn btn-success btn-sm">进入决策</a>
+          <a href="/editor?scenario=${s.scenario_id}" class="btn btn-outline btn-sm">编辑</a>
+          <button class="btn btn-danger btn-sm" onclick="deleteScenario('${s.scenario_id}')">删除</button>
+        </td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    handleError(e, '加载场景列表');
+  }
+}
+
+async function deleteScenario(id) {
+  if (!confirm('确定删除此场景？')) return;
+  try {
+    await API.del('/api/scenarios/' + id);
+    showToast('场景已删除');
+    loadScenarios();
+  } catch (e) {
+    handleError(e, '删除场景');
+  }
+}
+
+loadScenarios();
+</script>
+{% endblock %}

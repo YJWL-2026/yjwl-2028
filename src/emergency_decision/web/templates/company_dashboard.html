@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% block title %}企业数据大屏 - 安迅达物流{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 16px;">
+  <h2>🏢 <span id="company-name">安迅达物流集团</span></h2>
+  <p class="text-muted" id="company-desc">西南地区领先的第三方综合物流服务商</p>
+</div>
+
+<!-- 企业概览卡片 -->
+<div style="display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:16px;">
+  <div class="card" style="padding:14px; text-align:center;">
+    <div class="text-muted text-sm">成立时间</div>
+    <div style="font-size:22px; font-weight:700;" id="c-founded">-</div>
+  </div>
+  <div class="card" style="padding:14px; text-align:center;">
+    <div class="text-muted text-sm">车队规模</div>
+    <div style="font-size:22px; font-weight:700; color:#3b82f6;" id="c-fleet">-</div>
+  </div>
+  <div class="card" style="padding:14px; text-align:center;">
+    <div class="text-muted text-sm">仓储数量</div>
+    <div style="font-size:22px; font-weight:700; color:#10b981;" id="c-wh">-</div>
+  </div>
+  <div class="card" style="padding:14px; text-align:center;">
+    <div class="text-muted text-sm">服务城市</div>
+    <div style="font-size:22px; font-weight:700; color:#f59e0b;" id="c-cities">-</div>
+  </div>
+  <div class="card" style="padding:14px; text-align:center;">
+    <div class="text-muted text-sm">员工人数</div>
+    <div style="font-size:22px; font-weight:700; color:#8b5cf6;" id="c-emp">-</div>
+  </div>
+  <div class="card" style="padding:14px; text-align:center;">
+    <div class="text-muted text-sm">年营收</div>
+    <div style="font-size:22px; font-weight:700; color:#ef4444;" id="c-revenue">-</div>
+  </div>
+</div>
+
+<div style="display:flex; gap:16px;">
+  <!-- 左侧：实时订单地图 -->
+  <div style="flex:1;">
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div style="padding:12px 16px; border-bottom:1px solid #e0e0e0; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
+        <span>🚛 实时运单追踪</span>
+        <span class="text-muted text-sm" id="order-update-time">更新中...</span>
+      </div>
+      <div id="order-map" style="height:500px;"></div>
+    </div>
+  </div>
+
+  <!-- 右侧：订单列表 + 统计 -->
+  <div style="width:480px; display:flex; flex-direction:column; gap:12px;">
+    <!-- 统计 -->
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
+      <div class="card" style="padding:12px; text-align:center;">
+        <div class="text-muted text-sm">总订单</div>
+        <div style="font-size:24px; font-weight:700;" id="s-total">-</div>
+      </div>
+      <div class="card" style="padding:12px; text-align:center;">
+        <div class="text-muted text-sm">运输中</div>
+        <div style="font-size:24px; font-weight:700; color:#3b82f6;" id="s-active">-</div>
+      </div>
+      <div class="card" style="padding:12px; text-align:center;">
+        <div class="text-muted text-sm">已送达</div>
+        <div style="font-size:24px; font-weight:700; color:#10b981;" id="s-delivered">-</div>
+      </div>
+    </div>
+
+    <!-- 订单列表 -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div style="padding:12px 16px; border-bottom:1px solid #e0e0e0; font-weight:700;">
+        📦 订单列表 <span class="text-muted text-sm" id="order-count"></span>
+      </div>
+      <div id="order-list" style="max-height:420px; overflow-y:auto; padding:8px;">
+        <div class="text-center text-muted" style="padding:20px;">加载中...</div>
+      </div>
+    </div>
+
+    <!-- 企业资质 -->
+    <div class="card" style="padding:12px 16px;">
+      <div style="font-weight:700; margin-bottom:8px;">🏅 企业资质</div>
+      <div id="cert-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let orderMap = null;
+let orderMarkers = [];
+let orderLines = [];
+let orderTimer = null;
+
+function initOrderMap() {
+  if (orderMap) return;
+  orderMap = L.map('order-map').setView([28, 105], 5);
+  L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+    subdomains: ['1','2','3','4'], attribution: '高德地图', maxZoom: 18
+  }).addTo(orderMap);
+}
+
+async function loadCompanyInfo() {
+  try {
+    const info = await API.get('/api/company/info');
+    document.getElementById('company-name').textContent = info.logo + ' ' + info.company_name;
+    document.getElementById('company-desc').textContent = info.description;
+    document.getElementById('c-founded').textContent = info.founded;
+    document.getElementById('c-fleet').textContent = info.fleet_size + '辆';
+    document.getElementById('c-wh').textContent = info.warehouse_count + '个';
+    document.getElementById('c-cities').textContent = info.service_cities + '个';
+    document.getElementById('c-emp').textContent = info.employees + '人';
+    document.getElementById('c-revenue').textContent = info.annual_revenue;
+
+    const certEl = document.getElementById('cert-list');
+    certEl.innerHTML = (info.certifications || []).map(c =>
+      `<span style="background:#f0f7ff; color:#3b82f6; padding:4px 10px; border-radius:12px; font-size:12px;">${c}</span>`
+    ).join('');
+  } catch (e) { console.error('Company info:', e); }
+}
+
+async function loadOrders() {
+  try {
+    const data = await API.get('/api/company/orders');
+    const orders = data.orders || [];
+    const stats = data.stats || {};
+
+    document.getElementById('s-total').textContent = stats.total_orders || 0;
+    document.getElementById('s-active').textContent = stats.active_orders || 0;
+    document.getElementById('s-delivered').textContent = stats.delivered_orders || 0;
+    document.getElementById('order-count').textContent = `共${orders.length}单`;
+    document.getElementById('order-update-time').textContent = '更新于 ' + (data.updated_at || '');
+
+    // 渲染订单列表
+    const listEl = document.getElementById('order-list');
+    listEl.innerHTML = orders.map(o => {
+      const statusColor = o.status === '已送达' ? '#10b981' : o.status === '运输中' ? '#3b82f6' : '#f59e0b';
+      return `<div style="padding:10px; margin-bottom:6px; border-radius:8px; border:1px solid #eee; cursor:pointer;"
+        onclick="focusOrder(${o.current_lat},${o.current_lng})" onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:600; font-size:13px;">${o.order_no}</div>
+            <div class="text-muted text-sm">${o.from} → ${o.to}</div>
+            <div class="text-sm" style="color:#555; margin-top:2px;">${o.cargo} | ${o.vehicle}</div>
+          </div>
+          <div style="text-align:right;">
+            <span style="background:${statusColor}; color:#fff; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">${o.status}</span>
+            <div class="text-sm" style="margin-top:4px; color:#666;">${o.progress}%</div>
+            ${o.eta_hours > 0 ? `<div class="text-muted" style="font-size:11px;">预计${o.eta_hours}h</div>` : ''}
+          </div>
+        </div>
+        <div style="margin-top:6px; height:4px; background:#e5e7eb; border-radius:2px; overflow:hidden;">
+          <div style="height:100%; width:${o.progress}%; background:${statusColor}; transition:width 0.5s;"></div>
+        </div>
+      </div>`;
+    }).join('');
+
+    // 更新地图
+    initOrderMap();
+    setTimeout(() => orderMap.invalidateSize(), 100);
+
+    // 清除旧标记
+    orderMarkers.forEach(m => orderMap.removeLayer(m));
+    orderLines.forEach(l => orderMap.removeLayer(l));
+    orderMarkers = [];
+    orderLines = [];
+
+    orders.forEach(o => {
+      // 绘制路线
+      const line = L.polyline([[o.from_lat, o.from_lng], [o.to_lat, o.to_lng]], {
+        color: '#3b82f6', weight: 2, opacity: 0.3, dashArray: '5,5'
+      }).addTo(orderMap);
+      orderLines.push(line);
+
+      // 起点标记
+      const startIcon = L.divIcon({html: '🟢', className: '', iconSize: [16,16]});
+      orderMarkers.push(L.marker([o.from_lat, o.from_lng], {icon: startIcon})
+        .bindPopup(`<b>起</b><br>${o.from}<br>${o.order_no}`).addTo(orderMap));
+
+      // 终点标记
+      const endIcon = L.divIcon({html: o.status === '已送达' ? '🏁' : '📍', className: '', iconSize: [20,20]});
+      orderMarkers.push(L.marker([o.to_lat, o.to_lng], {icon: endIcon})
+        .bindPopup(`<b>终</b><br>${o.to}<br>${o.order_no}`).addTo(orderMap));
+
+      // 当前位置标记（运输中）
+      if (o.status === '运输中') {
+        const truckIcon = L.divIcon({html: '🚛', className: '', iconSize: [28,28]});
+        orderMarkers.push(L.marker([o.current_lat, o.current_lng], {icon: truckIcon})
+          .bindPopup(`<b>${o.order_no}</b><br>${o.from} → ${o.to}<br>进度: ${o.progress}%<br>预计: ${o.eta_hours}h<br>货物: ${o.cargo}<br>车辆: ${o.vehicle}`).addTo(orderMap));
+      }
+    });
+  } catch (e) {
+    console.error('Orders:', e);
+  }
+}
+
+function focusOrder(lat, lng) {
+  if (orderMap) orderMap.flyTo([lat, lng], 7, {duration: 1});
+}
+
+window.addEventListener('load', () => {
+  loadCompanyInfo();
+  loadOrders();
+  // 每30秒刷新订单
+  orderTimer = setInterval(loadOrders, 30000);
+});
+</script>
+{% endblock %}

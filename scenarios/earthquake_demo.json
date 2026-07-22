@@ -1,0 +1,87 @@
+{
+  "scenario_id": "EQ-2024-CHENGDU-001",
+  "scenario_name": "成都6.5级地震应急决策",
+  "disaster": {
+    "disaster_id": "EQ-2024-001",
+    "disaster_type": "earthquake",
+    "earthquake": {
+      "epicenter_city": "成都市",
+      "epicenter_lat": 30.67,
+      "epicenter_lng": 104.07,
+      "magnitude": 6.5,
+      "depth_km": 15,
+      "influence_radius_km": 80,
+      "occur_time": "2024-07-15T10:30:00+08:00",
+      "wave_arrival_times": [
+        {"node_id": "NODE-CD01", "arrival_min": 60},
+        {"node_id": "NODE-CD02", "arrival_min": 45},
+        {"node_id": "NODE-MY01", "arrival_min": 30}
+      ],
+      "affected_areas": ["成都", "德阳", "绵阳"],
+      "severity_level": "moderate"
+    }
+  },
+  "logistics_network": {
+    "nodes": [
+      {"node_id": "NODE-CD01", "node_name": "成都龙泉驿枢纽", "node_type": "depot", "city": "成都", "lat": 30.56, "lng": 104.15, "connected_road_ids": ["R-01", "R-02"]},
+      {"node_id": "NODE-CD02", "node_name": "成都双流转运中心", "node_type": "transfer_center", "city": "成都", "lat": 30.58, "lng": 103.98, "connected_road_ids": ["R-02", "R-03"]},
+      {"node_id": "NODE-CD03", "node_name": "成都青白江仓库区", "node_type": "warehouse", "city": "成都", "lat": 30.86, "lng": 104.28, "connected_road_ids": ["R-01", "R-04"]},
+      {"node_id": "NODE-DY01", "node_name": "德阳物流园", "node_type": "warehouse", "city": "德阳", "lat": 31.13, "lng": 104.38, "connected_road_ids": ["R-04", "R-05", "R-06"]},
+      {"node_id": "NODE-MY01", "node_name": "绵阳涪城配送站", "node_type": "customer_point", "city": "绵阳", "lat": 31.45, "lng": 104.75, "connected_road_ids": ["R-05", "R-07"]},
+      {"node_id": "NODE-MY02", "node_name": "绵阳游仙医院点", "node_type": "customer_point", "city": "绵阳", "lat": 31.48, "lng": 104.80, "connected_road_ids": ["R-07", "R-08"]},
+      {"node_id": "NODE-DZ01", "node_name": "都江堰中转站", "node_type": "junction", "city": "成都", "lat": 30.99, "lng": 103.63, "connected_road_ids": ["R-03", "R-09"]},
+      {"node_id": "NODE-AB01", "node_name": "阿坝理县备选仓", "node_type": "warehouse", "city": "阿坝", "lat": 31.43, "lng": 103.17, "connected_road_ids": ["R-09"]}
+    ],
+    "roads": [
+      {"road_id": "R-01", "road_name": "成绵高速(龙泉-青白江)", "road_type": "highway", "from_node": "NODE-CD01", "to_node": "NODE-CD03", "is_bidirectional": true, "distance_km": 35, "speed_limit_kmh": 100, "current_travel_time_min": 22, "road_condition": "clear", "has_bridge": true, "has_tunnel": false, "capacity_per_hour": 2000, "toll_cost": 15, "fuel_cost_per_km": 0.8},
+      {"road_id": "R-02", "road_name": "龙泉-双流快速路", "road_type": "city_road", "from_node": "NODE-CD01", "to_node": "NODE-CD02", "is_bidirectional": true, "distance_km": 20, "speed_limit_kmh": 60, "current_travel_time_min": 20, "road_condition": "clear", "has_bridge": false, "has_tunnel": false, "capacity_per_hour": 1500, "toll_cost": 0, "fuel_cost_per_km": 0.8},
+      {"road_id": "R-03", "road_name": "成灌高速(双流-都江堰)", "road_type": "highway", "from_node": "NODE-CD02", "to_node": "NODE-DZ01", "is_bidirectional": true, "distance_km": 50, "speed_limit_kmh": 100, "current_travel_time_min": 30, "road_condition": "clear", "has_bridge": true, "has_tunnel": false, "capacity_per_hour": 2000, "toll_cost": 20, "fuel_cost_per_km": 0.8},
+      {"road_id": "R-04", "road_name": "青白江-德阳省道", "road_type": "provincial", "from_node": "NODE-CD03", "to_node": "NODE-DY01", "is_bidirectional": true, "distance_km": 45, "speed_limit_kmh": 80, "current_travel_time_min": 34, "road_condition": "clear", "has_bridge": false, "has_tunnel": false, "capacity_per_hour": 1200, "toll_cost": 0, "fuel_cost_per_km": 0.7},
+      {"road_id": "R-05", "road_name": "德阳-绵阳高速", "road_type": "highway", "from_node": "NODE-DY01", "to_node": "NODE-MY01", "is_bidirectional": true, "distance_km": 55, "speed_limit_kmh": 100, "current_travel_time_min": 33, "road_condition": "clear", "has_bridge": true, "has_tunnel": false, "capacity_per_hour": 2000, "toll_cost": 25, "fuel_cost_per_km": 0.8},
+      {"road_id": "R-06", "road_name": "德阳-绵阳国道", "road_type": "national", "from_node": "NODE-DY01", "to_node": "NODE-MY01", "is_bidirectional": true, "distance_km": 60, "speed_limit_kmh": 60, "current_travel_time_min": 60, "road_condition": "slow", "has_bridge": true, "has_tunnel": false, "capacity_per_hour": 800, "toll_cost": 0, "fuel_cost_per_km": 0.7},
+      {"road_id": "R-07", "road_name": "绵阳市区配送路", "road_type": "city_road", "from_node": "NODE-MY01", "to_node": "NODE-MY02", "is_bidirectional": true, "distance_km": 8, "speed_limit_kmh": 40, "current_travel_time_min": 12, "road_condition": "clear", "has_bridge": false, "has_tunnel": false, "capacity_per_hour": 1000, "toll_cost": 0, "fuel_cost_per_km": 0.8},
+      {"road_id": "R-08", "road_name": "绵阳-理县县道", "road_type": "county", "from_node": "NODE-MY02", "to_node": "NODE-AB01", "is_bidirectional": true, "distance_km": 70, "speed_limit_kmh": 50, "current_travel_time_min": 84, "road_condition": "clear", "has_bridge": false, "has_tunnel": true, "capacity_per_hour": 500, "toll_cost": 0, "fuel_cost_per_km": 0.6},
+      {"road_id": "R-09", "road_name": "都江堰-理县国道", "road_type": "national", "from_node": "NODE-DZ01", "to_node": "NODE-AB01", "is_bidirectional": true, "distance_km": 80, "speed_limit_kmh": 60, "current_travel_time_min": 80, "road_condition": "clear", "has_bridge": false, "has_tunnel": true, "capacity_per_hour": 600, "toll_cost": 0, "fuel_cost_per_km": 0.7}
+    ]
+  },
+  "vehicle_fleet": [
+    {"vehicle_id": "V-01", "license_plate": "川A-001", "vehicle_type": "box_truck", "capacity_tons": 10, "capacity_m3": 50, "current_location_node": "NODE-CD01", "current_lat": 30.56, "current_lng": 104.15, "status": "idle", "current_cargo_ids": [], "current_load_tons": 0, "current_load_m3": 0, "driver_name": "张师傅", "home_depot": "NODE-CD01", "cost_per_km": 8.0, "cost_per_hour": 120, "is_refrigerated": false},
+    {"vehicle_id": "V-02", "license_plate": "川A-002", "vehicle_type": "box_truck", "capacity_tons": 8, "capacity_m3": 40, "current_location_node": "NODE-CD01", "current_lat": 30.56, "current_lng": 104.15, "status": "idle", "current_cargo_ids": [], "current_load_tons": 0, "current_load_m3": 0, "driver_name": "李师傅", "home_depot": "NODE-CD01", "cost_per_km": 7.5, "cost_per_hour": 110, "is_refrigerated": false},
+    {"vehicle_id": "V-03", "license_plate": "川A-003", "vehicle_type": "box_truck", "capacity_tons": 8, "capacity_m3": 45, "current_location_node": "NODE-CD03", "current_lat": 30.86, "current_lng": 104.28, "status": "in_transit", "current_cargo_ids": ["C-101", "C-102"], "current_load_tons": 5.2, "current_load_m3": 28, "driver_name": "王师傅", "home_depot": "NODE-CD01", "cost_per_km": 8.0, "cost_per_hour": 120, "is_refrigerated": false},
+    {"vehicle_id": "V-04", "license_plate": "川A-004", "vehicle_type": "refrigerated", "capacity_tons": 6, "capacity_m3": 30, "current_location_node": "NODE-CD02", "current_lat": 30.58, "current_lng": 103.98, "status": "idle", "current_cargo_ids": [], "current_load_tons": 0, "current_load_m3": 0, "driver_name": "赵师傅", "home_depot": "NODE-CD02", "cost_per_km": 9.0, "cost_per_hour": 130, "is_refrigerated": true},
+    {"vehicle_id": "V-05", "license_plate": "川B-005", "vehicle_type": "flatbed", "capacity_tons": 15, "capacity_m3": 60, "current_location_node": "NODE-DY01", "current_lat": 31.13, "current_lng": 104.38, "status": "idle", "current_cargo_ids": [], "current_load_tons": 0, "current_load_m3": 0, "driver_name": "陈师傅", "home_depot": "NODE-DY01", "cost_per_km": 9.5, "cost_per_hour": 140, "is_refrigerated": false},
+    {"vehicle_id": "V-06", "license_plate": "川A-006", "vehicle_type": "box_truck", "capacity_tons": 5, "capacity_m3": 25, "current_location_node": "NODE-CD01", "current_lat": 30.56, "current_lng": 104.15, "status": "maintenance", "current_cargo_ids": [], "current_load_tons": 0, "current_load_m3": 0, "driver_name": "刘师傅", "home_depot": "NODE-CD01", "cost_per_km": 7.0, "cost_per_hour": 100, "is_refrigerated": false}
+  ],
+  "warehouses": [
+    {"warehouse_id": "WH-01", "warehouse_name": "成都龙泉驿仓", "city": "成都", "address": "龙泉驿区XX路", "lat": 30.56, "lng": 104.15, "node_id": "NODE-CD01", "total_capacity_m3": 5000, "used_capacity_m3": 3200, "storage_cost_per_m3_per_day": 2.5, "supported_cargo_types": ["normal", "refrigerated"], "has_cold_chain": true, "has_dock": 4, "dock_occupancy": 2, "is_24h": true, "damage_status": "normal"},
+    {"warehouse_id": "WH-02", "warehouse_name": "德阳物流园仓", "city": "德阳", "address": "德阳XX大道", "lat": 31.13, "lng": 104.38, "node_id": "NODE-DY01", "total_capacity_m3": 3000, "used_capacity_m3": 1500, "storage_cost_per_m3_per_day": 2.0, "supported_cargo_types": ["normal"], "has_cold_chain": false, "has_dock": 3, "dock_occupancy": 1, "is_24h": true, "damage_status": "normal"},
+    {"warehouse_id": "WH-03", "warehouse_name": "阿坝理县备选仓", "city": "阿坝", "address": "理县XX镇", "lat": 31.43, "lng": 103.17, "node_id": "NODE-AB01", "total_capacity_m3": 2000, "used_capacity_m3": 500, "storage_cost_per_m3_per_day": 3.0, "supported_cargo_types": ["normal"], "has_cold_chain": false, "has_dock": 2, "dock_occupancy": 0, "is_24h": false, "damage_status": "normal"}
+  ],
+  "cargo_manifest": [
+    {"cargo_id": "C-101", "order_no": "PO-001", "cargo_type": "medical", "description": "急救药品一批", "weight_tons": 2.5, "volume_m3": 8, "value_yuan": 80000, "priority_level": "P1", "requires_cold_chain": false, "is_hazardous": false, "origin_node": "NODE-CD03", "origin_name": "成都青白江仓库区", "destination_node": "NODE-MY02", "destination_name": "绵阳游仙医院点", "destination_lat": 31.48, "destination_lng": 104.80, "assigned_vehicle_id": "V-03", "current_status": "in_transit", "current_location_node": "NODE-CD03", "planned_route": ["NODE-CD03", "NODE-DY01", "NODE-MY01", "NODE-MY02"], "current_route_index": 0, "departure_time": "2024-07-15T09:00:00+08:00", "deadline": "2024-07-15T18:00:00+08:00", "contract_penalty_per_hour": 500, "customer_id": "CU-021", "customer_name": "绵阳中心医院", "customer_type": "hospital"},
+    {"cargo_id": "C-102", "order_no": "PO-002", "cargo_type": "supplies", "description": "矿泉水食品包", "weight_tons": 3.0, "volume_m3": 12, "value_yuan": 15000, "priority_level": "P1", "requires_cold_chain": false, "is_hazardous": false, "origin_node": "NODE-CD03", "origin_name": "成都青白江仓库区", "destination_node": "NODE-MY01", "destination_name": "绵阳涪城配送站", "destination_lat": 31.45, "destination_lng": 104.75, "assigned_vehicle_id": "V-03", "current_status": "in_transit", "current_location_node": "NODE-CD03", "planned_route": ["NODE-CD03", "NODE-DY01", "NODE-MY01"], "current_route_index": 0, "departure_time": "2024-07-15T09:00:00+08:00", "deadline": "2024-07-15T20:00:00+08:00", "contract_penalty_per_hour": 300, "customer_id": "CU-022", "customer_name": "绵阳涪城商超", "customer_type": "supermarket"},
+    {"cargo_id": "C-103", "order_no": "PO-003", "cargo_type": "urgent", "description": "电子元件急件", "weight_tons": 1.5, "volume_m3": 5, "value_yuan": 60000, "priority_level": "P2", "requires_cold_chain": false, "is_hazardous": false, "origin_node": "NODE-CD01", "origin_name": "成都龙泉驿枢纽", "destination_node": "NODE-MY01", "destination_name": "绵阳涪城配送站", "destination_lat": 31.45, "destination_lng": 104.75, "assigned_vehicle_id": "", "current_status": "pending", "current_location_node": "NODE-CD01", "planned_route": ["NODE-CD01", "NODE-CD03", "NODE-DY01", "NODE-MY01"], "current_route_index": 0, "departure_time": "2024-07-15T10:00:00+08:00", "deadline": "2024-07-15T16:00:00+08:00", "contract_penalty_per_hour": 800, "customer_id": "CU-023", "customer_name": "绵阳科技公司", "customer_type": "enterprise"},
+    {"cargo_id": "C-104", "order_no": "PO-004", "cargo_type": "normal", "description": "日用品快递", "weight_tons": 2.0, "volume_m3": 10, "value_yuan": 5000, "priority_level": "P3", "requires_cold_chain": false, "is_hazardous": false, "origin_node": "NODE-CD01", "origin_name": "成都龙泉驿枢纽", "destination_node": "NODE-MY01", "destination_name": "绵阳涪城配送站", "destination_lat": 31.45, "destination_lng": 104.75, "assigned_vehicle_id": "", "current_status": "pending", "current_location_node": "NODE-CD01", "planned_route": ["NODE-CD01", "NODE-CD03", "NODE-DY01", "NODE-MY01"], "current_route_index": 0, "departure_time": "2024-07-15T10:30:00+08:00", "deadline": "2024-07-16T10:00:00+08:00", "contract_penalty_per_hour": 100, "customer_id": "CU-024", "customer_name": "个人客户", "customer_type": "individual"},
+    {"cargo_id": "C-105", "order_no": "PO-005", "cargo_type": "perishable", "description": "生鲜冷藏品", "weight_tons": 1.0, "volume_m3": 4, "value_yuan": 12000, "priority_level": "P2", "requires_cold_chain": true, "is_hazardous": false, "origin_node": "NODE-CD02", "origin_name": "成都双流转运中心", "destination_node": "NODE-DY01", "destination_name": "德阳物流园", "destination_lat": 31.13, "destination_lng": 104.38, "assigned_vehicle_id": "V-04", "current_status": "pending", "current_location_node": "NODE-CD02", "planned_route": ["NODE-CD02", "NODE-CD01", "NODE-CD03", "NODE-DY01"], "current_route_index": 0, "departure_time": "2024-07-15T10:00:00+08:00", "deadline": "2024-07-15T15:00:00+08:00", "contract_penalty_per_hour": 400, "customer_id": "CU-025", "customer_name": "德阳商超", "customer_type": "supermarket"},
+    {"cargo_id": "C-106", "order_no": "PO-006", "cargo_type": "normal", "description": "家具运输", "weight_tons": 5.0, "volume_m3": 20, "value_yuan": 8000, "priority_level": "P3", "requires_cold_chain": false, "is_hazardous": false, "origin_node": "NODE-CD01", "origin_name": "成都龙泉驿枢纽", "destination_node": "NODE-DY01", "destination_name": "德阳物流园", "destination_lat": 31.13, "destination_lng": 104.38, "assigned_vehicle_id": "", "current_status": "pending", "current_location_node": "NODE-CD01", "planned_route": ["NODE-CD01", "NODE-CD03", "NODE-DY01"], "current_route_index": 0, "departure_time": "2024-07-15T11:00:00+08:00", "deadline": "2024-07-16T18:00:00+08:00", "contract_penalty_per_hour": 80, "customer_id": "CU-026", "customer_name": "德阳企业", "customer_type": "enterprise"},
+    {"cargo_id": "C-107", "order_no": "PO-007", "cargo_type": "medical", "description": "医疗设备一批", "weight_tons": 4.0, "volume_m3": 15, "value_yuan": 120000, "priority_level": "P1", "requires_cold_chain": false, "is_hazardous": false, "origin_node": "NODE-CD01", "origin_name": "成都龙泉驿枢纽", "destination_node": "NODE-MY02", "destination_name": "绵阳游仙医院点", "destination_lat": 31.48, "destination_lng": 104.80, "assigned_vehicle_id": "", "current_status": "pending", "current_location_node": "NODE-CD01", "planned_route": ["NODE-CD01", "NODE-CD03", "NODE-DY01", "NODE-MY01", "NODE-MY02"], "current_route_index": 0, "departure_time": "2024-07-15T09:30:00+08:00", "deadline": "2024-07-15T22:00:00+08:00", "contract_penalty_per_hour": 600, "customer_id": "CU-027", "customer_name": "绵阳第二医院", "customer_type": "hospital"}
+  ],
+  "evaluation": {
+    "config_id": "EVAL-CFG-001",
+    "scenario_id": "EQ-2024-CHENGDU-001",
+    "benchmark_cost": 40000,
+    "benchmark_delivery_time_hours": 24,
+    "weights": {"timeliness": 0.30, "economic": 0.25, "feasibility": 0.25, "compliance": 0.20},
+    "bonus_rules": [{"rule": "first_submit_bonus", "score": 5}],
+    "penalty_rules": [{"rule": "timeout_penalty", "score": -10}],
+    "compliance_priority_list": ["medical", "supplies"]
+  },
+  "strategy_config": {
+    "mode": "time_pressure",
+    "time_limit_sec": 600,
+    "hide_optimal_until_submit": true,
+    "objective_weights": {"w_cost": 0.3, "w_time": 0.4, "w_risk": 0.2, "w_comp": 0.1},
+    "generate_alternatives": true,
+    "max_alternatives": 2
+  }
+}

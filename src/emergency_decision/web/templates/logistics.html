@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}全省物流信息查询{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 20px;">
+  <h2>🛣️ 全省物流信息查询</h2>
+  <p class="text-muted">西南地区（川/滇/黔/渝）主要物流道路、仓储节点、城市枢纽实时查询</p>
+</div>
+
+<div style="display:flex; gap:20px;">
+  <!-- 地图 -->
+  <div style="flex:1;">
+    <div id="logistics-map" style="height:600px; border-radius:12px; border:1px solid #e0e0e0; box-shadow:0 2px 8px rgba(0,0,0,0.06);"></div>
+  </div>
+
+  <!-- 信息面板 -->
+  <div style="width:400px; display:flex; flex-direction:column; gap:16px;">
+    <!-- 统计卡片 -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div class="card" style="padding:16px; text-align:center;">
+        <div class="text-muted text-sm">主要道路</div>
+        <div style="font-size:28px; font-weight:700; color:#3b82f6;" id="road-count">-</div>
+      </div>
+      <div class="card" style="padding:16px; text-align:center;">
+        <div class="text-muted text-sm">仓储节点</div>
+        <div style="font-size:28px; font-weight:700; color:#10b981;" id="wh-count">-</div>
+      </div>
+      <div class="card" style="padding:16px; text-align:center;">
+        <div class="text-muted text-sm">覆盖城市</div>
+        <div style="font-size:28px; font-weight:700; color:#f59e0b;" id="city-count">-</div>
+      </div>
+      <div class="card" style="padding:16px; text-align:center;">
+        <div class="text-muted text-sm">总里程(km)</div>
+        <div style="font-size:28px; font-weight:700; color:#8b5cf6;" id="total-km">-</div>
+      </div>
+    </div>
+
+    <!-- Tab切换 -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div style="display:flex; border-bottom:2px solid #e0e0e0;">
+        <button onclick="switchLogisticsTab('roads')" id="tab-roads-btn" style="flex:1; padding:10px; border:none; background:none; cursor:pointer; font-weight:600; border-bottom:3px solid #3b82f6; color:#3b82f6;">🛣️ 道路</button>
+        <button onclick="switchLogisticsTab('warehouses')" id="tab-wh-btn" style="flex:1; padding:10px; border:none; background:none; cursor:pointer; font-weight:600; border-bottom:3px solid transparent; color:#666;">🏭 仓库</button>
+        <button onclick="switchLogisticsTab('cities')" id="tab-city-btn" style="flex:1; padding:10px; border:none; background:none; cursor:pointer; font-weight:600; border-bottom:3px solid transparent; color:#666;">📍 城市</button>
+      </div>
+      <div id="logistics-list" style="max-height:380px; overflow-y:auto; padding:8px;"></div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let logMap = null;
+let logRoadLayer = null, logWhLayer = null, logCityLayer = null;
+let logData = null;
+
+function initLogMap() {
+  if (logMap) return;
+  logMap = L.map('logistics-map').setView([28, 104], 6);
+  L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+    subdomains: ['1','2','3','4'], attribution: '高德地图', maxZoom: 18
+  }).addTo(logMap);
+}
+
+async function loadLogistics() {
+  try {
+    logData = await API.get('/api/logistics/query');
+    const roads = logData.roads || [];
+    const whs = logData.warehouses || [];
+    const cities = logData.cities || [];
+
+    document.getElementById('road-count').textContent = roads.length;
+    document.getElementById('wh-count').textContent = whs.length;
+    document.getElementById('city-count').textContent = cities.length;
+    document.getElementById('total-km').textContent = roads.reduce((s, r) => s + r.distance_km, 0);
+
+    initLogMap();
+    setTimeout(() => logMap.invalidateSize(), 100);
+
+    // 绘制道路
+    logRoadLayer = L.layerGroup();
+    roads.forEach(r => {
+      L.polyline([[r.lat1, r.lng1], [r.lat2, r.lng2]], {
+        color: r.status === '畅通' ? '#3b82f6' : '#ef4444',
+        weight: 3, opacity: 0.7
+      }).bindPopup(`<b>${r.road_name}</b><br>${r.from_city} → ${r.to_city}<br>距离: ${r.distance_km}km<br>类型: ${r.type}<br>状态: ${r.status}`).addTo(logRoadLayer);
+    });
+    logRoadLayer.addTo(logMap);
+
+    // 绘制仓库
+    logWhLayer = L.layerGroup();
+    whs.forEach(w => {
+      L.marker([w.lat, w.lng], {icon: L.divIcon({html: '🏭', className: '', iconSize: [28,28]})})
+        .bindPopup(`<b>${w.name}</b><br>城市: ${w.city}<br>类型: ${w.type}<br>容量: ${w.capacity_m3}m³<br>状态: ${w.status}`).addTo(logWhLayer);
+    });
+
+    // 绘制城市
+    logCityLayer = L.layerGroup();
+    cities.forEach(c => {
+      const icon = c.is_hub ? '⭐' : '📍';
+      L.marker([c.lat, c.lng], {icon: L.divIcon({html: icon, className: '', iconSize: [24,24]})})
+        .bindPopup(`<b>${c.city}</b><br>类型: ${c.type}<br>${c.is_hub ? '区域枢纽' : '一般节点'}`).addTo(logCityLayer);
+    });
+    logCityLayer.addTo(logMap);
+    logWhLayer.addTo(logMap);
+
+    renderRoads(roads);
+  } catch (e) {
+    handleError(e, '物流信息加载');
+  }
+}
+
+function switchLogisticsTab(tab) {
+  ['roads','wh','city'].forEach((t, i) => {
+    const btn = document.getElementById(['tab-roads-btn','tab-wh-btn','tab-city-btn'][i]);
+    if (btn) { btn.style.borderBottomColor = 'transparent'; btn.style.color = '#666'; }
+  });
+  const activeBtn = document.getElementById('tab-' + (tab === 'warehouses' ? 'wh' : tab === 'cities' ? 'city' : 'roads') + '-btn');
+  if (activeBtn) { activeBtn.style.borderBottomColor = '#3b82f6'; activeBtn.style.color = '#3b82f6'; }
+
+  const listEl = document.getElementById('logistics-list');
+  if (tab === 'roads') {
+    renderRoads(logData.roads);
+    if (logWhLayer) logMap.removeLayer(logWhLayer);
+    if (logRoadLayer) logRoadLayer.addTo(logMap);
+  } else if (tab === 'warehouses') {
+    renderWarehouses(logData.warehouses);
+    if (logRoadLayer) logMap.removeLayer(logRoadLayer);
+    if (logWhLayer) logWhLayer.addTo(logMap);
+  } else {
+    renderCities(logData.cities);
+    if (logRoadLayer) logMap.removeLayer(logRoadLayer);
+    if (logWhLayer) logMap.removeLayer(logWhLayer);
+    if (logCityLayer) logCityLayer.addTo(logMap);
+  }
+}
+
+function renderRoads(roads) {
+  const listEl = document.getElementById('logistics-list');
+  listEl.innerHTML = roads.map(r => `
+    <div style="padding:10px; margin-bottom:6px; border-radius:8px; border:1px solid #eee; cursor:pointer;"
+      onclick="logMap.flyTo([${r.lat1},${r.lng1}], 7)" onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''">
+      <div style="font-weight:600; font-size:13px;">🛣️ ${r.road_name}</div>
+      <div class="text-muted text-sm">${r.from_city} → ${r.to_city} | ${r.distance_km}km | ${r.type}</div>
+      <span style="font-size:11px; color:${r.status === '畅通' ? '#10b981' : '#ef4444'}; font-weight:600;">● ${r.status}</span>
+    </div>`).join('');
+}
+
+function renderWarehouses(whs) {
+  const listEl = document.getElementById('logistics-list');
+  listEl.innerHTML = whs.map(w => `
+    <div style="padding:10px; margin-bottom:6px; border-radius:8px; border:1px solid #eee; cursor:pointer;"
+      onclick="logMap.flyTo([${w.lat},${w.lng}], 8)" onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''">
+      <div style="font-weight:600; font-size:13px;">🏭 ${w.name}</div>
+      <div class="text-muted text-sm">${w.city} | ${w.type} | ${w.capacity_m3}m³</div>
+      <span style="font-size:11px; color:#10b981; font-weight:600;">● ${w.status}</span>
+    </div>`).join('');
+}
+
+function renderCities(cities) {
+  const listEl = document.getElementById('logistics-list');
+  listEl.innerHTML = cities.map(c => `
+    <div style="padding:10px; margin-bottom:6px; border-radius:8px; border:1px solid #eee; cursor:pointer;"
+      onclick="logMap.flyTo([${c.lat},${c.lng}], 8)" onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background=''">
+      <div style="font-weight:600; font-size:13px;">${c.is_hub ? '⭐' : '📍'} ${c.city}</div>
+      <div class="text-muted text-sm">${c.type}${c.is_hub ? ' | 区域枢纽' : ''}</div>
+    </div>`).join('');
+}
+
+window.addEventListener('load', loadLogistics);
+</script>
+{% endblock %}

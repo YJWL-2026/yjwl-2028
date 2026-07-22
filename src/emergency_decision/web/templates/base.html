@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}应急决策教学系统{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/leaflet.css') }}">
+  <script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/leaflet.js') }}"></script>
+</head>
+<body>
+  <!-- 移动端顶部栏 -->
+  <div class="mobile-topbar">
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+    <div class="mobile-title">应急决策教学系统</div>
+    <span class="mobile-avatar" id="mobileAvatar">👤</span>
+  </div>
+
+  <!-- 侧边栏遮罩 -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar(false)"></div>
+
+  <div class="app-layout">
+    <!-- 侧边栏 -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h1>应急决策教学系统</h1>
+        <div class="subtitle">Emergency Decision Teaching</div>
+      </div>
+      <div class="sidebar-nav">
+        <a href="/" class="nav-item {% if active_page == 'home' %}active{% endif %}">
+          <span class="icon">🏠</span> <span>首页</span>
+        </a>
+        {% if current_user and current_user.role == 'teacher' %}
+        <a href="/editor" class="nav-item {% if active_page == 'editor' %}active{% endif %}">
+          <span class="icon">📝</span> <span>场景编辑器（教）</span>
+        </a>
+        {% endif %}
+        <a href="/decision" class="nav-item {% if active_page == 'decision' %}active{% endif %}">
+          <span class="icon">⚡</span> <span>学生决策（学）</span>
+        </a>
+        <a href="/profile" class="nav-item {% if active_page == 'profile' %}active{% endif %}">
+          <span class="icon">📊</span> <span>素养画像（育）</span>
+        </a>
+        {% if current_user and current_user.role == 'teacher' %}
+        <a href="/dashboard" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+          <span class="icon">📋</span> <span>教师后台（评）</span>
+        </a>
+        {% endif %}
+        <a href="/disaster-query" class="nav-item {% if active_page == 'disaster' %}active{% endif %}">
+          <span class="icon">🌐</span> <span>灾害查询（实时数据）</span>
+        </a>
+        {% if current_user and current_user.role == 'teacher' %}
+        <a href="/logistics" class="nav-item {% if active_page == 'logistics' %}active{% endif %}">
+          <span class="icon">🛣️</span> <span>全省物流信息</span>
+        </a>
+        {% endif %}
+        <a href="/company" class="nav-item {% if active_page == 'company' %}active{% endif %}">
+          <span class="icon">🏢</span> <span>企业数据大屏</span>
+        </a>
+      </div>
+      <div class="sidebar-footer">
+        <div id="userBox" style="margin-bottom:12px; display:none;">
+          <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(255,255,255,0.06); border-radius:8px;">
+            <span id="userAvatar" style="font-size:20px;"></span>
+            <div style="flex:1; min-width:0;">
+              <div id="userName" style="font-size:13px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+              <div id="userRole" style="font-size:11px; color:#9ca3af;"></div>
+            </div>
+          </div>
+          <button onclick="doLogout()" style="width:100%; padding:7px; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; background:rgba(239,68,68,0.15); color:#f87171; transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.25)'" onmouseout="this.style.background='rgba(239,68,68,0.15)'">退出登录</button>
+        </div>
+        v1.0 | 四支柱教学系统
+      </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+      <!-- 灾害预警动画条 -->
+      <div id="early-warning-bar" style="display:none; position:fixed; top:0; right:0; left:240px; z-index:9999; background:linear-gradient(90deg, #dc2626, #f59e0b, #dc2626); background-size:200% 100%; animation:warningSlide 0.5s ease-out, warningPulse 2s linear infinite; color:#fff; padding:10px 20px; font-weight:600; box-shadow:0 2px 12px rgba(0,0,0,0.3); cursor:pointer;" onclick="dismissWarning()">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <span style="font-size:24px; animation:warningBlink 0.8s ease-in-out infinite;">⚠️</span>
+          <div id="warning-content" style="flex:1;"></div>
+          <span style="font-size:18px; opacity:0.8;">✕</span>
+        </div>
+      </div>
+      <style>
+        @keyframes warningSlide { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+        @keyframes warningPulse { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+        @keyframes warningBlink { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+      </style>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <!-- 通知 -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // 侧边栏抽屉切换
+    function toggleSidebar(forceState) {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      const isOpen = forceState !== undefined ? forceState : !sidebar.classList.contains('open');
+      if (isOpen) {
+        sidebar.classList.add('open');
+        overlay.classList.add('active');
+      } else {
+        sidebar.classList.remove('open');
+        overlay.classList.remove('active');
+      }
+    }
+
+    // 页面跳转时自动收起侧边栏（移动端）
+    document.addEventListener('click', function(e) {
+      const navItem = e.target.closest('.nav-item');
+      if (navItem && window.innerWidth <= 768) {
+        setTimeout(() => toggleSidebar(false), 150);
+      }
+    });
+
+    // ---- 用户会话管理 ----
+    async function loadSession() {
+      try {
+        const resp = await fetch('/api/session');
+        const data = await resp.json();
+        if (!data.logged_in) {
+          window.location.href = '/login';
+          return null;
+        }
+        const user = data.user;
+        const box = document.getElementById('userBox');
+        if (box) {
+          document.getElementById('userAvatar').textContent = user.avatar || '👤';
+          document.getElementById('userName').textContent = user.name || user.username;
+          document.getElementById('userRole').textContent = user.role === 'teacher' ? '教师' : '学生';
+          box.style.display = '';
+        }
+        const mobileAvatar = document.getElementById('mobileAvatar');
+        if (mobileAvatar) mobileAvatar.textContent = user.avatar || '👤';
+        return user;
+      } catch (e) {
+        console.error('Session check failed:', e);
+      }
+      return null;
+    }
+
+    async function doLogout() {
+      try {
+        await fetch('/api/logout', { method: 'POST' });
+      } catch (e) {}
+      window.location.href = '/login';
+    }
+
+    // 页面加载时检查登录状态
+    loadSession();
+
+    const API = {
+      get: async (url) => {
+        const r = await fetch(url);
+        if (!r.ok) throw new Error(`API错误 ${r.status}: ${url}`);
+        return r.json();
+      },
+      post: async (url, data) => {
+        const r = await fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(data)
+        });
+        if (!r.ok) {
+          const err = await r.json().catch(() => ({}));
+          throw new Error(err.error || `API错误 ${r.status}`);
+        }
+        return r.json();
+      },
+      del: async (url) => {
+        const r = await fetch(url, {method: 'DELETE'});
+        return r.json();
+      },
+    };
+
+    function showToast(msg, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.className = 'toast show' + (isError ? ' error' : '');
+      setTimeout(() => toast.className = 'toast', 3000);
+    }
+
+    function handleError(e, context) {
+      console.error('[' + context + ']', e);
+      showToast(context + '失败: ' + e.message, true);
+    }
+
+    function formatNum(n) {
+      return new Intl.NumberFormat('zh-CN').format(n);
+    }
+
+    function getGrade(score) {
+      if (score >= 95) return ['S', '卓越'];
+      if (score >= 85) return ['A', '优秀'];
+      if (score >= 70) return ['B', '良好'];
+      if (score >= 55) return ['C', '合格'];
+      return ['D', '待提升'];
+    }
+
+    function getDisasterName(type) {
+      const names = {
+        earthquake: '地震', rainstorm: '暴雨', typhoon: '台风',
+        landslide: '山体滑坡', mudslide: '泥石流', flood: '洪水'
+      };
+      return names[type] || type;
+    }
+
+    function getStrategyName(mode) {
+      const names = {
+        time_pressure: '人机竞速',
+        agent_adversarial: '智能体对抗',
+        budget_constrained: '有限预算博弈'
+      };
+      return names[mode] || mode;
+    }
+
+    // ---- 灾害预警轮询 ----
+    let _lastWarningIds = new Set();
+    let _warningTimer = null;
+
+    function dismissWarning() {
+      const bar = document.getElementById('early-warning-bar');
+      if (bar) bar.style.display = 'none';
+    }
+
+    async function pollLatestDisasters() {
+      // 登录页不轮询
+      if (location.pathname === '/login') return;
+      try {
+        const data = await API.get('/api/realtime/latest?limit=3');
+        const disasters = data.disasters || [];
+        if (disasters.length === 0) return;
+
+        // 找出新的灾害（未通知过的）
+        const newDisasters = disasters.filter(d => !_lastWarningIds.has(d.event_id));
+        if (newDisasters.length === 0) return;
+
+        // 记录已通知
+        disasters.forEach(d => _lastWarningIds.add(d.event_id));
+
+        // 显示预警条
+        const bar = document.getElementById('early-warning-bar');
+        const content = document.getElementById('warning-content');
+        if (!bar || !content) return;
+
+        const d = newDisasters[0];
+        content.innerHTML = `<span style="font-size:14px;">${d.icon} <b>${d.title}</b> &mdash; ${d.detail} (${d.time})</span>`;
+        bar.style.display = '';
+        bar.style.left = '240px';
+
+        // 5秒后自动消失
+        setTimeout(() => { if (bar) bar.style.display = 'none'; }, 8000);
+      } catch (e) {
+        // 静默失败
+      }
+    }
+
+    // 页面加载后30秒开始轮询，每120秒轮询一次
+    setTimeout(() => {
+      pollLatestDisasters();
+      _warningTimer = setInterval(pollLatestDisasters, 120000);
+    }, 30000);
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

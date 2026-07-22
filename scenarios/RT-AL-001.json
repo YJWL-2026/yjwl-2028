@@ -1,0 +1,387 @@
+{
+  "scenario_id": "RT-AL-001",
+  "scenario_name": "真实预警场景 - 暴雨红色预警",
+  "scenario_description": "基于国家气象预警信息。预警标题: 河南省气象台发布暴雨红色预警信号。暴雨预警，需防范洪涝和道路积水",
+  "disaster": {
+    "disaster_id": "DIS-AL-SAMPLE-001",
+    "disaster_type": "rainstorm",
+    "center_lat": 34.75,
+    "center_lng": 113.65,
+    "influence_radius_km": 150,
+    "affected_areas": [
+      "河南"
+    ],
+    "occurrence_time": "2026-07-22 08:00:00",
+    "rainstorm": {
+      "center_city": "河南",
+      "center_lat": 34.75,
+      "center_lng": 113.65,
+      "rainfall_mm": 200,
+      "affected_duration_hours": 24,
+      "affected_areas": [
+        "河南"
+      ],
+      "waterlogged_roads": [
+        "R-A04"
+      ],
+      "river_water_level": []
+    }
+  },
+  "logistics_network": {
+    "nodes": [
+      {
+        "node_id": "NODE-AL00",
+        "node_name": "预警中心",
+        "node_type": "warehouse",
+        "city": "河南",
+        "lat": 34.75,
+        "lng": 113.65
+      },
+      {
+        "node_id": "NODE-AL01",
+        "node_name": "东部中转",
+        "node_type": "city",
+        "city": "东部",
+        "lat": 34.75,
+        "lng": 114.65
+      },
+      {
+        "node_id": "NODE-AL02",
+        "node_name": "南部配送",
+        "node_type": "city",
+        "city": "南部",
+        "lat": 33.75,
+        "lng": 113.65
+      },
+      {
+        "node_id": "NODE-AL03",
+        "node_name": "北部仓库",
+        "node_type": "warehouse",
+        "city": "北部",
+        "lat": 35.75,
+        "lng": 113.65
+      }
+    ],
+    "roads": [
+      {
+        "road_id": "R-A01",
+        "road_name": "中心-东部",
+        "from_node": "NODE-AL00",
+        "to_node": "NODE-AL01",
+        "road_type": "highway",
+        "is_bidirectional": true,
+        "distance_km": 80,
+        "speed_limit_kmh": 80,
+        "current_travel_time_min": 60,
+        "road_condition": "congested",
+        "has_bridge": false,
+        "has_tunnel": false,
+        "capacity_per_hour": 2000,
+        "toll_cost": 40,
+        "fuel_cost_per_km": 0.8
+      },
+      {
+        "road_id": "R-A02",
+        "road_name": "中心-南部",
+        "from_node": "NODE-AL00",
+        "to_node": "NODE-AL02",
+        "road_type": "highway",
+        "is_bidirectional": true,
+        "distance_km": 70,
+        "speed_limit_kmh": 80,
+        "current_travel_time_min": 53,
+        "road_condition": "slow",
+        "has_bridge": true,
+        "has_tunnel": false,
+        "capacity_per_hour": 1500,
+        "toll_cost": 35,
+        "fuel_cost_per_km": 0.8
+      },
+      {
+        "road_id": "R-A03",
+        "road_name": "中心-北部",
+        "from_node": "NODE-AL00",
+        "to_node": "NODE-AL03",
+        "road_type": "highway",
+        "is_bidirectional": true,
+        "distance_km": 90,
+        "speed_limit_kmh": 100,
+        "current_travel_time_min": 54,
+        "road_condition": "clear",
+        "has_bridge": false,
+        "has_tunnel": true,
+        "capacity_per_hour": 2500,
+        "toll_cost": 45,
+        "fuel_cost_per_km": 0.8
+      },
+      {
+        "road_id": "R-A04",
+        "road_name": "东部-南部",
+        "from_node": "NODE-AL01",
+        "to_node": "NODE-AL02",
+        "road_type": "highway",
+        "is_bidirectional": true,
+        "distance_km": 100,
+        "speed_limit_kmh": 80,
+        "current_travel_time_min": 75,
+        "road_condition": "blocked",
+        "has_bridge": true,
+        "has_tunnel": false,
+        "capacity_per_hour": 1000,
+        "toll_cost": 50,
+        "fuel_cost_per_km": 0.8
+      }
+    ]
+  },
+  "vehicle_fleet": [
+    {
+      "vehicle_id": "V-AL01",
+      "license_plate": "豫A30000",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 10,
+      "capacity_m3": 40,
+      "current_location_node": "NODE-AL00",
+      "current_lat": 34.75,
+      "current_lng": 113.65,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "司机1",
+      "home_depot": "NODE-AL00",
+      "cost_per_km": 8,
+      "cost_per_hour": 60,
+      "is_refrigerated": false
+    },
+    {
+      "vehicle_id": "V-AL02",
+      "license_plate": "豫A30001",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 10,
+      "capacity_m3": 40,
+      "current_location_node": "NODE-AL01",
+      "current_lat": 34.75,
+      "current_lng": 114.65,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "司机2",
+      "home_depot": "NODE-AL01",
+      "cost_per_km": 8,
+      "cost_per_hour": 60,
+      "is_refrigerated": false
+    },
+    {
+      "vehicle_id": "V-AL03",
+      "license_plate": "豫A30002",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 10,
+      "capacity_m3": 40,
+      "current_location_node": "NODE-AL02",
+      "current_lat": 33.75,
+      "current_lng": 113.65,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "司机3",
+      "home_depot": "NODE-AL02",
+      "cost_per_km": 8,
+      "cost_per_hour": 60,
+      "is_refrigerated": false
+    },
+    {
+      "vehicle_id": "V-AL04",
+      "license_plate": "豫A30003",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 10,
+      "capacity_m3": 40,
+      "current_location_node": "NODE-AL03",
+      "current_lat": 35.75,
+      "current_lng": 113.65,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "司机4",
+      "home_depot": "NODE-AL03",
+      "cost_per_km": 8,
+      "cost_per_hour": 60,
+      "is_refrigerated": false
+    }
+  ],
+  "warehouses": [
+    {
+      "warehouse_id": "WH-AL01",
+      "warehouse_name": "预警中心仓",
+      "city": "河南",
+      "address": "物流中心",
+      "lat": 34.75,
+      "lng": 113.65,
+      "node_id": "NODE-AL00",
+      "total_capacity_m3": 5000,
+      "used_capacity_m3": 2500,
+      "storage_cost_per_m3_per_day": 2.5,
+      "supported_cargo_types": [
+        "normal"
+      ],
+      "has_cold_chain": false,
+      "has_dock": 5,
+      "dock_occupancy": 2,
+      "is_24h": true,
+      "damage_status": "damaged"
+    },
+    {
+      "warehouse_id": "WH-AL02",
+      "warehouse_name": "北部备选仓",
+      "city": "北部",
+      "address": "北部物流园",
+      "lat": 35.75,
+      "lng": 113.65,
+      "node_id": "NODE-AL03",
+      "total_capacity_m3": 3000,
+      "used_capacity_m3": 500,
+      "storage_cost_per_m3_per_day": 2.0,
+      "supported_cargo_types": [
+        "normal"
+      ],
+      "has_cold_chain": false,
+      "has_dock": 3,
+      "dock_occupancy": 0,
+      "is_24h": true,
+      "damage_status": "normal"
+    }
+  ],
+  "cargo_manifest": [
+    {
+      "cargo_id": "C-AL01",
+      "order_no": "PO-AL01",
+      "cargo_type": "supplies",
+      "description": "应急救灾物资",
+      "weight_tons": 6,
+      "volume_m3": 25,
+      "value_yuan": 35000,
+      "priority_level": "P1",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-AL00",
+      "origin_name": "预警中心仓",
+      "destination_node": "NODE-AL01",
+      "destination_name": "东部安置点",
+      "destination_lat": 34.75,
+      "destination_lng": 114.65,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-AL00",
+      "planned_route": [
+        "NODE-AL00",
+        "NODE-AL01"
+      ],
+      "current_route_index": 0,
+      "departure_time": "",
+      "deadline": "",
+      "contract_penalty_per_hour": 500,
+      "customer_id": "CUST-AL01",
+      "customer_name": "东部安置点",
+      "customer_type": "enterprise"
+    },
+    {
+      "cargo_id": "C-AL02",
+      "order_no": "PO-AL02",
+      "cargo_type": "medical",
+      "description": "医疗急救药品",
+      "weight_tons": 2,
+      "volume_m3": 8,
+      "value_yuan": 55000,
+      "priority_level": "P1",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-AL00",
+      "origin_name": "预警中心仓",
+      "destination_node": "NODE-AL02",
+      "destination_name": "南部医院",
+      "destination_lat": 33.75,
+      "destination_lng": 113.65,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-AL00",
+      "planned_route": [
+        "NODE-AL00",
+        "NODE-AL02"
+      ],
+      "current_route_index": 0,
+      "departure_time": "",
+      "deadline": "",
+      "contract_penalty_per_hour": 800,
+      "customer_id": "CUST-AL02",
+      "customer_name": "南部医院",
+      "customer_type": "enterprise"
+    },
+    {
+      "cargo_id": "C-AL03",
+      "order_no": "PO-AL03",
+      "cargo_type": "normal",
+      "description": "建材设备",
+      "weight_tons": 8,
+      "volume_m3": 30,
+      "value_yuan": 20000,
+      "priority_level": "P3",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-AL03",
+      "origin_name": "北部仓库",
+      "destination_node": "NODE-AL01",
+      "destination_name": "东部工地",
+      "destination_lat": 34.75,
+      "destination_lng": 114.65,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-AL03",
+      "planned_route": [
+        "NODE-AL03",
+        "NODE-AL01"
+      ],
+      "current_route_index": 0,
+      "departure_time": "",
+      "deadline": "",
+      "contract_penalty_per_hour": 300,
+      "customer_id": "CUST-AL03",
+      "customer_name": "东部工地",
+      "customer_type": "enterprise"
+    }
+  ],
+  "evaluation": {
+    "config_id": "EVAL-RT-AL",
+    "scenario_id": "RT-AL-001",
+    "benchmark_cost": 6000,
+    "benchmark_delivery_time_hours": 48,
+    "weights": {
+      "timeliness": 0.3,
+      "economic": 0.25,
+      "feasibility": 0.25,
+      "compliance": 0.2
+    },
+    "bonus_rules": [
+      {
+        "rule": "first_submit_bonus",
+        "score": 5
+      }
+    ],
+    "penalty_rules": [
+      {
+        "rule": "timeout_penalty",
+        "score": -10
+      }
+    ],
+    "max_delay_hours": 48
+  },
+  "strategy_config": {
+    "mode": "time_pressure"
+  },
+  "realtime_source": {
+    "alert_id": "SAMPLE-001",
+    "source": "国家气象预警信息"
+  },
+  "created_at": "2026-07-22T10:19"
+}

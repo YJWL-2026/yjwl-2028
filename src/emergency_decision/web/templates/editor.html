@@ -1,0 +1,509 @@
+{% extends "base.html" %}
+{% block title %}场景编辑器 - 应急决策教学系统{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <h2>场景编辑器 <span class="text-sm text-muted">（教）</span></h2>
+  <div class="actions">
+    <button class="btn btn-outline" onclick="exportJSON()">导出JSON</button>
+    <button class="btn btn-success" onclick="saveScenario()">保存场景</button>
+    <button class="btn btn-primary" onclick="loadScenarioPrompt()">加载场景</button>
+    <button class="btn btn-outline" onclick="deleteScenarioPrompt()" style="color:#ef4444; border-color:#fca5a5;">🗑 删除场景</button>
+  </div>
+</div>
+
+<!-- 灾害参数 -->
+<div class="card">
+  <div class="card-header">
+    <h3>灾害信息</h3>
+    <span class="tag tag-red" id="disaster-type-tag">地震</span>
+  </div>
+  <div class="grid-2">
+    <div class="form-group">
+      <label class="form-label">场景ID</label>
+      <input type="text" class="form-control" id="scenario_id" placeholder="SCENE-EQ-001">
+    </div>
+    <div class="form-group">
+      <label class="form-label">场景名称</label>
+      <input type="text" class="form-control" id="scenario_name" placeholder="成都6.5级地震应急推演">
+    </div>
+    <div class="form-group">
+      <label class="form-label">灾害类型</label>
+      <select class="form-control" id="disaster_type" onchange="onDisasterTypeChange()">
+        <option value="earthquake">地震</option>
+        <option value="rainstorm">暴雨</option>
+        <option value="typhoon">台风</option>
+        <option value="landslide">山体滑坡</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">策略模式</label>
+      <select class="form-control" id="strategy_mode">
+        <option value="time_pressure">策略一：人机竞速</option>
+        <option value="agent_adversarial">策略二：智能体对抗</option>
+        <option value="budget_constrained">策略三：有限预算</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 地震参数 -->
+  <div id="earthquake-params">
+    <h4 class="mt-2 mb-1">地震参数</h4>
+    <div class="grid-4">
+      <div class="form-group">
+        <label class="form-label">震中城市</label>
+        <input type="text" class="form-control" id="eq_city" value="成都市">
+      </div>
+      <div class="form-group">
+        <label class="form-label">震级（里氏）</label>
+        <input type="number" class="form-control" id="eq_magnitude" value="6.5" step="0.1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">震源深度(km)</label>
+        <input type="number" class="form-control" id="eq_depth" value="15" step="0.5">
+      </div>
+      <div class="form-group">
+        <label class="form-label">影响半径(km)</label>
+        <input type="number" class="form-control" id="eq_radius" value="80" step="5">
+      </div>
+      <div class="form-group">
+        <label class="form-label">震中纬度</label>
+        <input type="number" class="form-control" id="eq_lat" value="30.5728" step="0.0001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">震中经度</label>
+        <input type="number" class="form-control" id="eq_lng" value="104.0668" step="0.0001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">发生时间</label>
+        <input type="text" class="form-control" id="eq_time" value="2024-07-21 10:30:00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">影响区域（逗号分隔）</label>
+        <input type="text" class="form-control" id="eq_areas" value="成都市,德阳市,绵阳市">
+      </div>
+    </div>
+  </div>
+
+  <!-- 暴雨参数 -->
+  <div id="rainstorm-params" style="display:none;">
+    <h4 class="mt-2 mb-1">暴雨参数</h4>
+    <div class="grid-4">
+      <div class="form-group">
+        <label class="form-label">中心城市</label>
+        <input type="text" class="form-control" id="rs_city" value="郑州市">
+      </div>
+      <div class="form-group">
+        <label class="form-label">降雨量(mm)</label>
+        <input type="number" class="form-control" id="rs_rainfall" value="200" step="10">
+      </div>
+      <div class="form-group">
+        <label class="form-label">持续时长(小时)</label>
+        <input type="number" class="form-control" id="rs_duration" value="24" step="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">中心纬度</label>
+        <input type="number" class="form-control" id="rs_lat" value="34.7466" step="0.0001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">中心经度</label>
+        <input type="number" class="form-control" id="rs_lng" value="113.6253" step="0.0001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">影响区域</label>
+        <input type="text" class="form-control" id="rs_areas" value="郑州市,开封市,新乡市">
+      </div>
+    </div>
+  </div>
+
+  <!-- 台风参数 -->
+  <div id="typhoon-params" style="display:none;">
+    <h4 class="mt-2 mb-1">台风参数</h4>
+    <div class="grid-4">
+      <div class="form-group">
+        <label class="form-label">台风名称</label>
+        <input type="text" class="form-control" id="tf_name" value="海葵">
+      </div>
+      <div class="form-group">
+        <label class="form-label">风力等级</label>
+        <input type="number" class="form-control" id="tf_wind" value="12" step="0.5">
+      </div>
+      <div class="form-group">
+        <label class="form-label">移动速度(km/h)</label>
+        <input type="number" class="form-control" id="tf_speed" value="25" step="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">移动方向</label>
+        <input type="text" class="form-control" id="tf_direction" value="西北">
+      </div>
+      <div class="form-group">
+        <label class="form-label">登陆时间</label>
+        <input type="text" class="form-control" id="tf_landing_time" value="2024-07-21 14:00:00">
+      </div>
+      <div class="form-group">
+        <label class="form-label">登陆地点</label>
+        <input type="text" class="form-control" id="tf_landing_loc" value="厦门市">
+      </div>
+      <div class="form-group">
+        <label class="form-label">中心纬度</label>
+        <input type="number" class="form-control" id="tf_lat" value="24.4798" step="0.0001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">中心经度</label>
+        <input type="number" class="form-control" id="tf_lng" value="118.0894" step="0.0001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">影响半径(km)</label>
+        <input type="number" class="form-control" id="tf_radius" value="300" step="10">
+      </div>
+      <div class="form-group">
+        <label class="form-label">港口关闭</label>
+        <select class="form-control" id="tf_port"><option value="true">是</option><option value="false">否</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">机场关闭</label>
+        <select class="form-control" id="tf_airport"><option value="true">是</option><option value="false">否</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">影响区域</label>
+        <input type="text" class="form-control" id="tf_areas" value="厦门市,泉州市,福州市">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 评分配置 -->
+<div class="card">
+  <div class="card-header">
+    <h3>评分配置</h3>
+  </div>
+  <div class="grid-4">
+    <div class="form-group">
+      <label class="form-label">时效性权重(%)</label>
+      <input type="number" class="form-control" id="w_timeliness" value="30">
+    </div>
+    <div class="form-group">
+      <label class="form-label">经济性权重(%)</label>
+      <input type="number" class="form-control" id="w_economic" value="25">
+    </div>
+    <div class="form-group">
+      <label class="form-label">可行性权重(%)</label>
+      <input type="number" class="form-control" id="w_feasibility" value="25">
+    </div>
+    <div class="form-group">
+      <label class="form-label">合规性权重(%)</label>
+      <input type="number" class="form-control" id="w_compliance" value="20">
+    </div>
+    <div class="form-group">
+      <label class="form-label">基准成本(元)</label>
+      <input type="number" class="form-control" id="benchmark_cost" value="40000">
+    </div>
+    <div class="form-group">
+      <label class="form-label">基准送达时间(小时)</label>
+      <input type="number" class="form-control" id="benchmark_time" value="24">
+    </div>
+    <div class="form-group">
+      <label class="form-label">首次提交加分</label>
+      <input type="number" class="form-control" id="bonus_first" value="5">
+    </div>
+    <div class="form-group">
+      <label class="form-label">超时扣分</label>
+      <input type="number" class="form-control" id="penalty_timeout" value="-10">
+    </div>
+  </div>
+</div>
+
+<!-- JSON预览 -->
+<div class="card">
+  <div class="card-header">
+    <h3>场景JSON预览</h3>
+    <div class="flex gap-1">
+      <button class="btn btn-outline btn-sm" onclick="previewJSON()">刷新预览</button>
+      <button class="btn btn-outline btn-sm" onclick="copyJSON()">复制</button>
+    </div>
+  </div>
+  <div class="json-editor" id="json-preview">// 点击"刷新预览"生成JSON</div>
+</div>
+
+<!-- 节点/路段/车辆/仓库/货物 数据表 (简化版: 直接编辑JSON) -->
+<div class="card">
+  <div class="card-header">
+    <h3>物流网络数据编辑</h3>
+    <span class="text-sm text-muted">节点、路段、车辆、仓库、货物数据请在JSON中编辑</span>
+  </div>
+  <p style="color: var(--text-secondary); font-size: 13px;">
+    场景的物流网络（节点、路段）、车辆、仓库、货物等数据结构较为复杂，
+    建议通过JSON直接编辑。您可以在上方JSON预览区直接修改，或从已有场景加载后修改。
+  </p>
+  <div class="flex gap-1 mt-2">
+    <button class="btn btn-outline btn-sm" onclick="loadScenarioPrompt()">从文件加载</button>
+    <button class="btn btn-outline btn-sm" onclick="applyJSONFromPreview()">应用JSON编辑</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function onDisasterTypeChange() {
+  const type = document.getElementById('disaster_type').value;
+  document.getElementById('earthquake-params').style.display = type === 'earthquake' ? '' : 'none';
+  document.getElementById('rainstorm-params').style.display = type === 'rainstorm' ? '' : 'none';
+  document.getElementById('typhoon-params').style.display = type === 'typhoon' ? '' : 'none';
+  const tag = document.getElementById('disaster-type-tag');
+  tag.textContent = getDisasterName(type);
+  tag.className = 'tag ' + (type === 'earthquake' ? 'tag-red' : type === 'rainstorm' ? 'tag-blue' : 'tag-orange');
+}
+
+function buildScenarioJSON() {
+  const type = document.getElementById('disaster_type').value;
+  const sid = document.getElementById('scenario_id').value || 'SCENE-' + Date.now();
+  const sname = document.getElementById('scenario_name').value || '未命名场景';
+
+  let disaster = { disaster_id: 'DIS-' + sid, disaster_type: type };
+
+  if (type === 'earthquake') {
+    disaster.earthquake = {
+      epicenter_city: val('eq_city'),
+      epicenter_lat: num('eq_lat'),
+      epicenter_lng: num('eq_lng'),
+      magnitude: num('eq_magnitude'),
+      depth_km: num('eq_depth'),
+      influence_radius_km: num('eq_radius'),
+      occur_time: val('eq_time'),
+      affected_areas: val('eq_areas').split(',').map(s => s.trim()).filter(Boolean),
+      severity_level: num('eq_magnitude') >= 7 ? 'severe' : 'moderate',
+      wave_arrival_times: [],
+    };
+  } else if (type === 'rainstorm') {
+    disaster.rainstorm = {
+      center_city: val('rs_city'),
+      center_lat: num('rs_lat'),
+      center_lng: num('rs_lng'),
+      rainfall_mm: num('rs_rainfall'),
+      affected_duration_hours: num('rs_duration'),
+      affected_areas: val('rs_areas').split(',').map(s => s.trim()).filter(Boolean),
+      waterlogged_roads: [],
+      river_water_level: [],
+    };
+  } else if (type === 'typhoon') {
+    disaster.typhoon = {
+      typhoon_name: val('tf_name'),
+      center_lat: num('tf_lat'),
+      center_lng: num('tf_lng'),
+      wind_force_level: num('tf_wind'),
+      moving_speed_kmh: num('tf_speed'),
+      moving_direction: val('tf_direction'),
+      landing_time: val('tf_landing_time'),
+      landing_location: val('tf_landing_loc'),
+      influence_radius_km: num('tf_radius'),
+      port_closure: val('tf_port') === 'true',
+      airport_closure: val('tf_airport') === 'true',
+      affected_areas: val('tf_areas').split(',').map(s => s.trim()).filter(Boolean),
+    };
+  }
+
+  const scenario = {
+    scenario_id: sid,
+    scenario_name: sname,
+    disaster: disaster,
+    logistics_network: currentScenario?.logistics_network || { nodes: [], roads: [] },
+    vehicle_fleet: currentScenario?.vehicle_fleet || [],
+    warehouses: currentScenario?.warehouses || [],
+    cargo_manifest: currentScenario?.cargo_manifest || [],
+    evaluation: {
+      config_id: 'EVAL-DEFAULT',
+      scenario_id: sid,
+      benchmark_cost: num('benchmark_cost'),
+      benchmark_delivery_time_hours: num('benchmark_time'),
+      weights: {
+        timeliness: num('w_timeliness') / 100,
+        economic: num('w_economic') / 100,
+        feasibility: num('w_feasibility') / 100,
+        compliance: num('w_compliance') / 100,
+      },
+      bonus_rules: [{ rule: 'first_submit_bonus', score: num('bonus_first') }],
+      penalty_rules: [{ rule: 'timeout_penalty', score: num('penalty_timeout') }],
+      compliance_priority_list: ['medical', 'supplies'],
+    },
+    strategy_config: {
+      mode: val('strategy_mode'),
+      time_limit_sec: 600,
+      hide_optimal_until_submit: true,
+      generate_alternatives: true,
+      max_alternatives: 2,
+    },
+  };
+  return scenario;
+}
+
+function val(id) { return document.getElementById(id).value; }
+function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+let currentScenario = null;
+
+function previewJSON() {
+  const scenario = buildScenarioJSON();
+  document.getElementById('json-preview').textContent = JSON.stringify(scenario, null, 2);
+}
+
+function exportJSON() {
+  const scenario = buildScenarioJSON();
+  const blob = new Blob([JSON.stringify(scenario, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (scenario.scenario_id || 'scenario') + '.json';
+  a.click();
+  showToast('JSON已导出');
+}
+
+async function saveScenario() {
+  const scenario = buildScenarioJSON();
+  try {
+    const res = await API.post('/api/scenarios', scenario);
+    if (res.status === 'ok') {
+      showToast('场景已保存: ' + res.scenario_id);
+    } else {
+      showToast('保存失败: ' + (res.error || '未知错误'), true);
+    }
+  } catch (e) {
+    showToast('保存失败: ' + e.message, true);
+  }
+}
+
+async function loadScenarioPrompt() {
+  try {
+    const scenarios = await API.get('/api/scenarios');
+    if (!scenarios.length) {
+      showToast('暂无已保存的场景', true);
+      return;
+    }
+    const sid = prompt('请输入场景ID:\n\n可用场景:\n' +
+      scenarios.map(s => `${s.scenario_id} - ${s.scenario_name}`).join('\n'));
+    if (!sid) return;
+    await loadScenarioById(sid);
+  } catch (e) {
+    handleError(e, '加载场景列表');
+  }
+}
+
+async function deleteScenarioPrompt() {
+  try {
+    const scenarios = await API.get('/api/scenarios');
+    if (!scenarios.length) {
+      showToast('暂无已保存的场景', true);
+      return;
+    }
+    const list = scenarios.map(s => `${s.scenario_id} - ${s.scenario_name}`).join('\n');
+    const sid = prompt('请输入要删除的场景ID:\n\n可用场景:\n' + list);
+    if (!sid) return;
+    if (!confirm(`确定删除场景「${sid}」？\n\n⚠️ 此操作不可恢复！`)) return;
+    const res = await API.del('/api/scenarios/' + sid);
+    if (res.status === 'ok') {
+      showToast('场景已删除: ' + res.deleted);
+      if (currentScenario && currentScenario.scenario_id === sid) {
+        currentScenario = null;
+        document.getElementById('json-preview').textContent = '// 场景已删除';
+      }
+    } else {
+      showToast('删除失败: ' + (res.error || '未知错误'), true);
+    }
+  } catch (e) {
+    handleError(e, '删除场景');
+  }
+}
+
+async function loadScenarioById(sid) {
+  try {
+    const data = await API.get('/api/scenarios/' + sid);
+    if (data.error) { showToast('加载失败: ' + data.error, true); return; }
+    currentScenario = data;
+    
+    document.getElementById('scenario_id').value = data.scenario_id || '';
+    document.getElementById('scenario_name').value = data.scenario_name || '';
+    document.getElementById('disaster_type').value = data.disaster?.disaster_type || 'earthquake';
+    onDisasterTypeChange();
+    
+    const d = data.disaster || {};
+    if (d.earthquake) {
+      const eq = d.earthquake;
+      setVal('eq_city', eq.epicenter_city);
+      setNum('eq_lat', eq.epicenter_lat);
+      setNum('eq_lng', eq.epicenter_lng);
+      setNum('eq_magnitude', eq.magnitude);
+      setNum('eq_depth', eq.depth_km);
+      setNum('eq_radius', eq.influence_radius_km);
+      setVal('eq_time', eq.occur_time);
+      setVal('eq_areas', (eq.affected_areas || []).join(','));
+    }
+    if (d.rainstorm) {
+      const rs = d.rainstorm;
+      setVal('rs_city', rs.center_city);
+      setNum('rs_lat', rs.center_lat);
+      setNum('rs_lng', rs.center_lng);
+      setNum('rs_rainfall', rs.rainfall_mm);
+      setNum('rs_duration', rs.affected_duration_hours);
+      setVal('rs_areas', (rs.affected_areas || []).join(','));
+    }
+    if (d.typhoon) {
+      const tf = d.typhoon;
+      setVal('tf_name', tf.typhoon_name);
+      setNum('tf_lat', tf.center_lat);
+      setNum('tf_lng', tf.center_lng);
+      setNum('tf_wind', tf.wind_force_level);
+      setNum('tf_speed', tf.moving_speed_kmh);
+      setVal('tf_direction', tf.moving_direction);
+      setVal('tf_landing_time', tf.landing_time);
+      setVal('tf_landing_loc', tf.landing_location);
+      setNum('tf_radius', tf.influence_radius_km);
+      setVal('tf_port', tf.port_closure ? 'true' : 'false');
+      setVal('tf_airport', tf.airport_closure ? 'true' : 'false');
+      setVal('tf_areas', (tf.affected_areas || []).join(','));
+    }
+    
+    const ev = data.evaluation || {};
+    const w = ev.weights || {};
+    setNum('w_timeliness', (w.timeliness || 0.3) * 100);
+    setNum('w_economic', (w.economic || 0.25) * 100);
+    setNum('w_feasibility', (w.feasibility || 0.25) * 100);
+    setNum('w_compliance', (w.compliance || 0.2) * 100);
+    setNum('benchmark_cost', ev.benchmark_cost || 40000);
+    setNum('benchmark_time', ev.benchmark_delivery_time_hours || 24);
+    
+    const sc = data.strategy_config || {};
+    document.getElementById('strategy_mode').value = sc.mode || 'time_pressure';
+    
+    previewJSON();
+    showToast('场景已加载');
+  } catch (e) {
+    showToast('加载失败: ' + e.message, true);
+  }
+}
+
+function setVal(id, v) { const el = document.getElementById(id); if (el) el.value = v; }
+function setNum(id, v) { const el = document.getElementById(id); if (el) el.value = v; }
+
+function applyJSONFromPreview() {
+  try {
+    const text = document.getElementById('json-preview').textContent;
+    const data = JSON.parse(text);
+    currentScenario = data;
+    showToast('JSON已应用，点击"保存场景"提交');
+  } catch (e) {
+    showToast('JSON格式错误: ' + e.message, true);
+  }
+}
+
+function copyJSON() {
+  const text = document.getElementById('json-preview').textContent;
+  navigator.clipboard.writeText(text);
+  showToast('JSON已复制到剪贴板');
+}
+
+// 页面加载时检查URL参数
+const params = new URLSearchParams(location.search);
+if (params.get('scenario')) {
+  loadScenarioById(params.get('scenario'));
+}
+previewJSON();
+</script>
+{% endblock %}

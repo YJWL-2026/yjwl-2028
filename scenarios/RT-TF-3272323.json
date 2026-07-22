@@ -1,0 +1,389 @@
+{
+  "scenario_id": "RT-TF-3272323",
+  "scenario_name": "真实台风场景 - 海神 (热带低压)",
+  "scenario_description": "基于中央气象台台风网实时数据。台风名称: 海神，最大风速: 13m/s，中心气压: 1000hPa。热带风暴，局部影响",
+  "disaster": {
+    "disaster_id": "DIS-TF-3272323",
+    "disaster_type": "typhoon",
+    "center_lat": 14.0,
+    "center_lng": 135.1,
+    "influence_radius_km": 150,
+    "affected_areas": [
+      "海神"
+    ],
+    "occurrence_time": "2026-07-13 00:00",
+    "typhoon": {
+      "typhoon_name": "海神",
+      "center_lat": 14.0,
+      "center_lng": 135.1,
+      "wind_force_level": 26,
+      "moving_speed_kmh": 25,
+      "moving_direction": "西北",
+      "landing_time": "2026-07-13 00:00",
+      "landing_location": "海神",
+      "influence_radius_km": 150,
+      "port_closure": true,
+      "airport_closure": true,
+      "affected_areas": [
+        "海神"
+      ]
+    }
+  },
+  "logistics_network": {
+    "nodes": [
+      {
+        "node_id": "NODE-TF00",
+        "node_name": "台风中心(海神)",
+        "node_type": "city",
+        "city": "海神",
+        "lat": 14.0,
+        "lng": 135.1
+      },
+      {
+        "node_id": "NODE-TF01",
+        "node_name": "沿海港口",
+        "node_type": "warehouse",
+        "city": "沿海",
+        "lat": 13.0,
+        "lng": 134.1
+      },
+      {
+        "node_id": "NODE-TF02",
+        "node_name": "内陆枢纽",
+        "node_type": "city",
+        "city": "内陆",
+        "lat": 16.0,
+        "lng": 133.1
+      },
+      {
+        "node_id": "NODE-TF03",
+        "node_name": "北部中转",
+        "node_type": "city",
+        "city": "北部",
+        "lat": 17.0,
+        "lng": 135.1
+      }
+    ],
+    "roads": [
+      {
+        "road_id": "R-T01",
+        "road_name": "港口-内陆",
+        "from_node": "NODE-TF01",
+        "to_node": "NODE-TF02",
+        "road_type": "highway",
+        "is_bidirectional": true,
+        "distance_km": 200,
+        "speed_limit_kmh": 80,
+        "current_travel_time_min": 150,
+        "road_condition": "slow",
+        "has_bridge": true,
+        "has_tunnel": false,
+        "capacity_per_hour": 2000,
+        "toll_cost": 100,
+        "fuel_cost_per_km": 0.8
+      },
+      {
+        "road_id": "R-T02",
+        "road_name": "港口-北部",
+        "from_node": "NODE-TF01",
+        "to_node": "NODE-TF03",
+        "road_type": "highway",
+        "is_bidirectional": true,
+        "distance_km": 250,
+        "speed_limit_kmh": 80,
+        "current_travel_time_min": 188,
+        "road_condition": "congested",
+        "has_bridge": false,
+        "has_tunnel": false,
+        "capacity_per_hour": 1500,
+        "toll_cost": 125,
+        "fuel_cost_per_km": 0.8
+      },
+      {
+        "road_id": "R-T03",
+        "road_name": "内陆-北部",
+        "from_node": "NODE-TF02",
+        "to_node": "NODE-TF03",
+        "road_type": "highway",
+        "is_bidirectional": true,
+        "distance_km": 150,
+        "speed_limit_kmh": 100,
+        "current_travel_time_min": 90,
+        "road_condition": "clear",
+        "has_bridge": false,
+        "has_tunnel": true,
+        "capacity_per_hour": 3000,
+        "toll_cost": 75,
+        "fuel_cost_per_km": 0.8
+      },
+      {
+        "road_id": "R-T04",
+        "road_name": "台风中心-港口",
+        "from_node": "NODE-TF00",
+        "to_node": "NODE-TF01",
+        "road_type": "highway",
+        "is_bidirectional": true,
+        "distance_km": 100,
+        "speed_limit_kmh": 60,
+        "current_travel_time_min": 100,
+        "road_condition": "blocked",
+        "has_bridge": true,
+        "has_tunnel": false,
+        "capacity_per_hour": 500,
+        "toll_cost": 50,
+        "fuel_cost_per_km": 0.8
+      }
+    ]
+  },
+  "vehicle_fleet": [
+    {
+      "vehicle_id": "V-TF01",
+      "license_plate": "闽B20000",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 12,
+      "capacity_m3": 45,
+      "current_location_node": "NODE-TF00",
+      "current_lat": 14.0,
+      "current_lng": 135.1,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "司机1",
+      "home_depot": "NODE-TF00",
+      "cost_per_km": 8,
+      "cost_per_hour": 60,
+      "is_refrigerated": false
+    },
+    {
+      "vehicle_id": "V-TF02",
+      "license_plate": "闽B20001",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 12,
+      "capacity_m3": 45,
+      "current_location_node": "NODE-TF01",
+      "current_lat": 13.0,
+      "current_lng": 134.1,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "司机2",
+      "home_depot": "NODE-TF01",
+      "cost_per_km": 8,
+      "cost_per_hour": 60,
+      "is_refrigerated": false
+    },
+    {
+      "vehicle_id": "V-TF03",
+      "license_plate": "闽B20002",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 12,
+      "capacity_m3": 45,
+      "current_location_node": "NODE-TF02",
+      "current_lat": 16.0,
+      "current_lng": 133.1,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "司机3",
+      "home_depot": "NODE-TF02",
+      "cost_per_km": 8,
+      "cost_per_hour": 60,
+      "is_refrigerated": false
+    },
+    {
+      "vehicle_id": "V-TF04",
+      "license_plate": "闽B20003",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 12,
+      "capacity_m3": 45,
+      "current_location_node": "NODE-TF03",
+      "current_lat": 17.0,
+      "current_lng": 135.1,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "司机4",
+      "home_depot": "NODE-TF03",
+      "cost_per_km": 8,
+      "cost_per_hour": 60,
+      "is_refrigerated": false
+    }
+  ],
+  "warehouses": [
+    {
+      "warehouse_id": "WH-TF01",
+      "warehouse_name": "沿海物流仓",
+      "city": "沿海",
+      "address": "沿海物流园",
+      "lat": 13.0,
+      "lng": 134.1,
+      "node_id": "NODE-TF01",
+      "total_capacity_m3": 6000,
+      "used_capacity_m3": 3000,
+      "storage_cost_per_m3_per_day": 2.5,
+      "supported_cargo_types": [
+        "normal"
+      ],
+      "has_cold_chain": false,
+      "has_dock": 6,
+      "dock_occupancy": 3,
+      "is_24h": true,
+      "damage_status": "damaged"
+    },
+    {
+      "warehouse_id": "WH-TF02",
+      "warehouse_name": "内陆中转仓",
+      "city": "内陆",
+      "address": "内陆物流中心",
+      "lat": 16.0,
+      "lng": 133.1,
+      "node_id": "NODE-TF02",
+      "total_capacity_m3": 4000,
+      "used_capacity_m3": 1000,
+      "storage_cost_per_m3_per_day": 2.0,
+      "supported_cargo_types": [
+        "normal"
+      ],
+      "has_cold_chain": false,
+      "has_dock": 4,
+      "dock_occupancy": 1,
+      "is_24h": true,
+      "damage_status": "normal"
+    }
+  ],
+  "cargo_manifest": [
+    {
+      "cargo_id": "C-TF01",
+      "order_no": "PO-TF01",
+      "cargo_type": "supplies",
+      "description": "应急物资一批",
+      "weight_tons": 8,
+      "volume_m3": 30,
+      "value_yuan": 40000,
+      "priority_level": "P1",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-TF01",
+      "origin_name": "沿海仓库",
+      "destination_node": "NODE-TF02",
+      "destination_name": "内陆中转",
+      "destination_lat": 16.0,
+      "destination_lng": 133.1,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-TF01",
+      "planned_route": [
+        "NODE-TF01",
+        "NODE-TF02"
+      ],
+      "current_route_index": 0,
+      "departure_time": "",
+      "deadline": "",
+      "contract_penalty_per_hour": 500,
+      "customer_id": "CUST-TF01",
+      "customer_name": "应急物资客户",
+      "customer_type": "enterprise"
+    },
+    {
+      "cargo_id": "C-TF02",
+      "order_no": "PO-TF02",
+      "cargo_type": "medical",
+      "description": "医疗急救包",
+      "weight_tons": 2,
+      "volume_m3": 10,
+      "value_yuan": 60000,
+      "priority_level": "P1",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-TF01",
+      "origin_name": "沿海仓库",
+      "destination_node": "NODE-TF03",
+      "destination_name": "北部医院",
+      "destination_lat": 17.0,
+      "destination_lng": 135.1,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-TF01",
+      "planned_route": [
+        "NODE-TF01",
+        "NODE-TF03"
+      ],
+      "current_route_index": 0,
+      "departure_time": "",
+      "deadline": "",
+      "contract_penalty_per_hour": 800,
+      "customer_id": "CUST-TF02",
+      "customer_name": "北部医院",
+      "customer_type": "enterprise"
+    },
+    {
+      "cargo_id": "C-TF03",
+      "order_no": "PO-TF03",
+      "cargo_type": "normal",
+      "description": "建材物资",
+      "weight_tons": 10,
+      "volume_m3": 35,
+      "value_yuan": 25000,
+      "priority_level": "P3",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-TF02",
+      "origin_name": "内陆仓库",
+      "destination_node": "NODE-TF03",
+      "destination_name": "北部工地",
+      "destination_lat": 17.0,
+      "destination_lng": 135.1,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-TF02",
+      "planned_route": [
+        "NODE-TF02",
+        "NODE-TF03"
+      ],
+      "current_route_index": 0,
+      "departure_time": "",
+      "deadline": "",
+      "contract_penalty_per_hour": 300,
+      "customer_id": "CUST-TF03",
+      "customer_name": "北部工地",
+      "customer_type": "enterprise"
+    }
+  ],
+  "evaluation": {
+    "config_id": "EVAL-RT-TF",
+    "scenario_id": "RT-TF-3272323",
+    "benchmark_cost": 8000,
+    "benchmark_delivery_time_hours": 48,
+    "weights": {
+      "timeliness": 0.3,
+      "economic": 0.25,
+      "feasibility": 0.25,
+      "compliance": 0.2
+    },
+    "bonus_rules": [
+      {
+        "rule": "first_submit_bonus",
+        "score": 5
+      }
+    ],
+    "penalty_rules": [
+      {
+        "rule": "timeout_penalty",
+        "score": -10
+      }
+    ],
+    "max_delay_hours": 48
+  },
+  "strategy_config": {
+    "mode": "time_pressure"
+  },
+  "realtime_source": {
+    "typhoon_id": 3272323,
+    "source": "中央气象台台风网"
+  },
+  "created_at": "2026-07-22T10:19"
+}

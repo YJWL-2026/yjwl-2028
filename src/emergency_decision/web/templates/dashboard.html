@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}教师后台 - 应急决策教学系统{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <h2>教师管理后台 <span class="text-sm text-muted">（评）</span></h2>
+  <div class="actions">
+    <button class="btn btn-primary" onclick="loadDashboard()">刷新数据</button>
+  </div>
+</div>
+
+<!-- 统计概览 -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-icon" style="background: var(--accent-bg); color: var(--accent);">👥</div>
+    <div>
+      <div class="stat-value" id="total-students">0</div>
+      <div class="stat-label">参与学生</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background: var(--success-bg); color: var(--success);">✅</div>
+    <div>
+      <div class="stat-value" id="completed-count">0</div>
+      <div class="stat-label">已完成推演</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background: var(--warning-bg); color: var(--warning);">📊</div>
+    <div>
+      <div class="stat-value" id="avg-score">--</div>
+      <div class="stat-label">班级平均分</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background: var(--danger-bg); color: var(--danger);">⭐</div>
+    <div>
+      <div class="stat-value" id="top-score">--</div>
+      <div class="stat-label">最高分</div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- 等级分布图 -->
+  <div class="card">
+    <div class="card-header">
+      <h3>素养等级分布</h3>
+      <span class="text-sm text-muted">各维度S/A/B/C/D等级人数</span>
+    </div>
+    <div class="chart-container" style="height: 350px;">
+      <canvas id="distribution-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- 三维平均雷达图 -->
+  <div class="card">
+    <div class="card-header">
+      <h3>班级平均素养画像</h3>
+      <span class="text-sm text-muted">三维核心素养均值</span>
+    </div>
+    <div class="chart-container" style="height: 350px;">
+      <canvas id="class-radar-chart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- 学生成绩表 -->
+<div class="card">
+  <div class="card-header">
+    <h3>学生成绩明细</h3>
+    <button class="btn btn-outline btn-sm" onclick="exportGrades()">导出成绩</button>
+  </div>
+  <table class="data-table" id="grades-table">
+    <thead>
+      <tr>
+        <th>学生ID</th>
+        <th>风险意识</th>
+        <th>系统思维</th>
+        <th>决策韧性</th>
+        <th>综合评分</th>
+        <th>等级</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="grades-list">
+      <tr><td colspan="7" class="text-center text-muted">暂无数据，请等待学生完成决策推演</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 评分维度说明 -->
+<div class="card">
+  <div class="card-header">
+    <h3>评分体系说明</h3>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>维度</th>
+        <th>满分</th>
+        <th>评分依据</th>
+        <th>权重</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="font-bold">时效性</td>
+        <td>100</td>
+        <td>货物实际送达时间 / 客户要求最晚送达时间（超出扣分）</td>
+        <td><span class="tag tag-red">30%</span></td>
+      </tr>
+      <tr>
+        <td class="font-bold">经济性</td>
+        <td>100</td>
+        <td>实际总成本（运输+仓储+违约）/ 行业基准成本</td>
+        <td><span class="tag tag-orange">25%</span></td>
+      </tr>
+      <tr>
+        <td class="font-bold">可行性</td>
+        <td>100</td>
+        <td>方案是否符合当前可用资源（车辆、仓库数量）上限</td>
+        <td><span class="tag tag-blue">25%</span></td>
+      </tr>
+      <tr>
+        <td class="font-bold">合规性</td>
+        <td>100</td>
+        <td>是否优先保障了医疗/民生类物资（社会责任项加分）</td>
+        <td><span class="tag tag-green">20%</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="mt-2 text-sm text-muted">
+    总分 = ∑(各维度得分 × 权重) + 额外加减分项（首次提交+5分，超时-10分）
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let distChart = null;
+let classRadar = null;
+
+async function loadDashboard() {
+  try {
+    const data = await API.get('/api/teacher/dashboard');
+    
+    const scores = data.student_scores || [];
+    document.getElementById('total-students').textContent = data.total_students || 0;
+    document.getElementById('completed-count').textContent = scores.length;
+    
+    if (scores.length === 0) {
+      showToast('暂无学生数据，请先完成决策推演');
+      return;
+    }
+    
+    const overallScores = scores.map(s => s.overall);
+    const avg = overallScores.reduce((a,b) => a+b, 0) / overallScores.length;
+    const top = Math.max(...overallScores);
+    document.getElementById('avg-score').textContent = avg.toFixed(1);
+    document.getElementById('top-score').textContent = top.toFixed(1);
+    
+    // 等级分布图
+    drawDistribution(data.distribution || {});
+    
+    // 班级平均雷达图
+    const avgRisk = scores.reduce((a,s) => a+s.risk_awareness, 0) / scores.length;
+    const avgSystem = scores.reduce((a,s) => a+s.system_thinking, 0) / scores.length;
+    const avgResilience = scores.reduce((a,s) => a+s.decision_resilience, 0) / scores.length;
+    drawClassRadar([avgRisk, avgSystem, avgResilience]);
+    
+    // 成绩表
+    const tbody = document.getElementById('grades-list');
+    tbody.innerHTML = scores.map(s => {
+      const [grade, desc] = getGrade(s.overall);
+      const gradeColor = s.overall >= 85 ? 'tag-green' : s.overall >= 70 ? 'tag-blue' : s.overall >= 55 ? 'tag-orange' : 'tag-red';
+      return `
+        <tr>
+          <td><span class="tag tag-gray">${s.student_id}</span></td>
+          <td>${s.risk_awareness.toFixed(1)}</td>
+          <td>${s.system_thinking.toFixed(1)}</td>
+          <td>${s.decision_resilience.toFixed(1)}</td>
+          <td class="font-bold">${s.overall.toFixed(1)}</td>
+          <td><span class="tag ${gradeColor}">${grade}（${desc}）</span></td>
+          <td><a href="/profile?student=${s.student_id}" class="btn btn-outline btn-sm">查看画像</a></td>
+        </tr>
+      `;
+    }).join('');
+  } catch (e) {
+    handleError(e, '加载教师后台数据');
+  }
+}
+
+function drawDistribution(dist) {
+  if (distChart) distChart.destroy();
+  const ctx = document.getElementById('distribution-chart').getContext('2d');
+  
+  const dims = ['risk_awareness', 'system_thinking', 'decision_resilience'];
+  const dimNames = ['风险意识', '系统思维', '决策韧性'];
+  const levels = ['S', 'A', 'B', 'C', 'D'];
+  const levelColors = ['#8b5cf6', '#10b981', '#3b82f6', '#f59e0b', '#ef4444'];
+  
+  const datasets = dims.map((dim, i) => ({
+    label: dimNames[i],
+    data: levels.map(l => (dist[dim] || {})[l] || 0),
+    backgroundColor: ['rgba(139,92,246,0.7)', 'rgba(16,185,129,0.7)', 'rgba(59,130,246,0.7)'][i],
+    borderRadius: 4,
+  }));
+  
+  distChart = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: levels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { x: { title: { display: true, text: '等级' } }, y: { beginAtZero: true, title: { display: true, text: '人数' }, ticks: { stepSize: 1 } } },
+      plugins: { legend: { position: 'bottom' } }
+    }
+  });
+}
+
+function drawClassRadar(values) {
+  if (classRadar) classRadar.destroy();
+  const ctx = document.getElementById('class-radar-chart').getContext('2d');
+  classRadar = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: ['风险意识', '系统思维', '决策韧性'],
+      datasets: [{
+        label: '班级平均',
+        data: values.map(v => v.toFixed(1)),
+        backgroundColor: 'rgba(79, 70, 229, 0.2)',
+        borderColor: 'rgba(79, 70, 229, 1)',
+        borderWidth: 2,
+        pointBackgroundColor: 'rgba(79, 70, 229, 1)',
+        pointRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { r: { beginAtZero: true, max: 100, ticks: { stepSize: 20 }, pointLabels: { font: { size: 14, weight: 'bold' } } } },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+function exportGrades() {
+  const rows = document.querySelectorAll('#grades-table tbody tr');
+  let csv = '学生ID,风险意识,系统思维,决策韧性,综合评分,等级\n';
+  rows.forEach(row => {
+    const cells = row.querySelectorAll('td');
+    if (cells.length >= 6) {
+      csv += Array.from(cells).slice(0, 6).map(c => c.textContent.trim()).join(',') + '\n';
+    }
+  });
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '学生成绩.csv';
+  a.click();
+  showToast('成绩已导出');
+}
+
+loadDashboard();
+</script>
+{% endblock %}

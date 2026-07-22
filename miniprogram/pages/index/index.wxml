@@ -1,0 +1,25 @@
+<!--pages/index/index.wxml - 首页WebView-->
+<view class="container">
+  <!-- 加载中提示 -->
+  <view class="loading" wx:if="{{loading}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">正在加载应急决策系统...</text>
+  </view>
+
+  <!-- WebView内嵌Web系统 -->
+  <web-view
+    wx:else
+    src="{{webUrl}}"
+    bindmessage="onMessage"
+    binderror="onError"
+    bindload="onLoad">
+  </web-view>
+
+  <!-- 网络错误提示 -->
+  <view class="error-panel" wx:if="{{loadError}}">
+    <text class="error-icon">!</text>
+    <text class="error-title">无法连接到服务器</text>
+    <text class="error-desc">请检查网络连接或稍后重试</text>
+    <button class="btn-primary" bindtap="retry">重新加载</button>
+  </view>
+</view>

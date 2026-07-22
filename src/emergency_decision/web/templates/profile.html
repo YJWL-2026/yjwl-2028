@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% block title %}素养画像 - 应急决策教学系统{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <h2>素养画像 <span class="text-sm text-muted">（育）</span></h2>
+  <div class="actions">
+    <input type="text" class="form-control" id="student-id-input" value="STU-001" placeholder="学生ID" style="width: 200px;">
+    <button class="btn btn-primary" onclick="loadProfile()">查询画像</button>
+  </div>
+</div>
+
+<!-- 总览 -->
+<div id="overview-section">
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-icon" style="background: var(--danger-bg); color: var(--danger);">⚠️</div>
+      <div>
+        <div class="stat-value" id="risk-score">--</div>
+        <div class="stat-label">风险意识</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: var(--accent-bg); color: var(--accent);">🧩</div>
+      <div>
+        <div class="stat-value" id="system-score">--</div>
+        <div class="stat-label">系统思维</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: var(--success-bg); color: var(--success);">💪</div>
+      <div>
+        <div class="stat-value" id="resilience-score">--</div>
+        <div class="stat-label">决策韧性</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: var(--warning-bg); color: var(--warning);">🏆</div>
+      <div>
+        <div class="stat-value" id="overall-score">--</div>
+        <div class="stat-label">综合评分</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid-2">
+  <!-- 雷达图 -->
+  <div class="card">
+    <div class="card-header">
+      <h3>三维素养雷达图</h3>
+      <span class="text-sm text-muted" id="student-id-display"></span>
+    </div>
+    <div class="chart-container">
+      <canvas id="radar-chart"></canvas>
+    </div>
+  </div>
+
+  <!-- 等级徽章 -->
+  <div class="card">
+    <div class="card-header">
+      <h3>等级徽章</h3>
+    </div>
+    <div id="badges-section">
+      <div class="form-group" style="padding: 16px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px;">
+        <div class="flex-between mb-1">
+          <span class="font-bold text-lg">⚠️ 风险意识</span>
+          <span class="tag tag-purple" id="risk-badge">--</span>
+        </div>
+        <div class="text-sm text-muted" id="risk-assessment">暂无数据</div>
+        <div class="mt-1" id="risk-sub-scores"></div>
+      </div>
+      <div class="form-group" style="padding: 16px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px;">
+        <div class="flex-between mb-1">
+          <span class="font-bold text-lg">🧩 系统思维</span>
+          <span class="tag tag-purple" id="system-badge">--</span>
+        </div>
+        <div class="text-sm text-muted" id="system-assessment">暂无数据</div>
+        <div class="mt-1" id="system-sub-scores"></div>
+      </div>
+      <div class="form-group" style="padding: 16px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px;">
+        <div class="flex-between mb-1">
+          <span class="font-bold text-lg">💪 决策韧性</span>
+          <span class="tag tag-purple" id="resilience-badge">--</span>
+        </div>
+        <div class="text-sm text-muted" id="resilience-assessment">暂无数据</div>
+        <div class="mt-1" id="resilience-sub-scores"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 成长曲线 -->
+<div class="card">
+  <div class="card-header">
+    <h3>成长曲线</h3>
+    <span class="text-sm text-muted">多轮决策推演的素养变化趋势</span>
+  </div>
+  <div class="chart-container" style="height: 300px;">
+    <canvas id="growth-chart"></canvas>
+  </div>
+  <p class="text-center text-sm text-muted mt-2" id="growth-hint">完成多轮决策推演后，此处将显示成长趋势</p>
+</div>
+
+<!-- 五维原始行为数据 -->
+<div class="card">
+  <div class="card-header">
+    <h3>五维行为数据明细</h3>
+    <span class="text-sm text-muted">采集自最新一次决策推演</span>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>数据维度</th>
+        <th>具体指标</th>
+        <th>数值</th>
+        <th>说明</th>
+      </tr>
+    </thead>
+    <tbody id="behavior-detail">
+      <tr><td colspan="4" class="text-center text-muted">暂无数据，请先完成决策推演</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let radarChart = null;
+let growthChart = null;
+
+async function loadProfile() {
+  const sid = document.getElementById('student-id-input').value || 'STU-001';
+  document.getElementById('student-id-display').textContent = '学生: ' + sid;
+  
+  try {
+    const profile = await API.get('/api/profile/' + sid);
+    
+    if (profile.message) {
+      showToast(profile.message, true);
+      return;
+    }
+    
+    showProfile(profile);
+    loadGrowth(sid);
+  } catch (e) {
+    handleError(e, '查询画像');
+  }
+}
+
+function showProfile(profile) {
+  const dims = profile.dimensions || {};
+  const radar = profile.radar_data || { labels: [], values: [0,0,0] };
+  const overall = profile.overall || {};
+  
+  // 统计卡片
+  const risk = dims.risk_awareness || {};
+  const system = dims.system_thinking || {};
+  const resilience = dims.decision_resilience || {};
+  
+  document.getElementById('risk-score').textContent = risk.score || 0;
+  document.getElementById('system-score').textContent = system.score || 0;
+  document.getElementById('resilience-score').textContent = resilience.score || 0;
+  document.getElementById('overall-score').textContent = overall.score || 0;
+  
+  // 徽章
+  document.getElementById('risk-badge').textContent = risk.badge || '--';
+  document.getElementById('system-badge').textContent = system.badge || '--';
+  document.getElementById('resilience-badge').textContent = resilience.badge || '--';
+  document.getElementById('risk-assessment').textContent = risk.assessment || '暂无数据';
+  document.getElementById('system-assessment').textContent = system.assessment || '暂无数据';
+  document.getElementById('resilience-assessment').textContent = resilience.assessment || '暂无数据';
+  
+  // 子项得分
+  const subNames = {
+    risk_awareness: { response_speed: '响应速度', safe_route_preference: '安全路线偏好', info_inspection: '信息查看频次', resource_reserve: '资源预留' },
+    system_thinking: { cargo_inspection: '货物清单查看', multi_link_operation: '多环节联动', alternative_attempts: '备选方案尝试' },
+    decision_resilience: { time_stability: '用时稳定性', plan_deviation: '方案偏离度' },
+  };
+  
+  function renderSubScores(elementId, subScores, dimKey) {
+    if (!subScores) { document.getElementById(elementId).innerHTML = ''; return; }
+    const names = subNames[dimKey] || {};
+    let html = '<div class="flex gap-1" style="flex-wrap:wrap;">';
+    for (const [key, val] of Object.entries(subScores)) {
+      html += `<span class="tag tag-gray">${names[key] || key}: ${val}</span>`;
+    }
+    html += '</div>';
+    document.getElementById(elementId).innerHTML = html;
+  }
+  
+  renderSubScores('risk-sub-scores', risk.sub_scores, 'risk_awareness');
+  renderSubScores('system-sub-scores', system.sub_scores, 'system_thinking');
+  renderSubScores('resilience-sub-scores', resilience.sub_scores, 'decision_resilience');
+  
+  // 雷达图
+  if (radarChart) radarChart.destroy();
+  const ctx = document.getElementById('radar-chart').getContext('2d');
+  radarChart = new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels: radar.labels,
+      datasets: [{
+        label: '素养画像',
+        data: radar.values,
+        backgroundColor: 'rgba(79, 70, 229, 0.2)',
+        borderColor: 'rgba(79, 70, 229, 1)',
+        borderWidth: 2,
+        pointBackgroundColor: 'rgba(79, 70, 229, 1)',
+        pointRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          beginAtZero: true, max: 100,
+          ticks: { stepSize: 20, font: { size: 10 } },
+          pointLabels: { font: { size: 14, weight: 'bold' } },
+        }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+  
+  // 五维行为数据表
+  const tbody = document.getElementById('behavior-detail');
+  const rows = [];
+  if (risk.sub_scores) {
+    rows.push(`<tr><td>响应速度</td><td>从收到预警到提交方案的时间</td><td>${risk.sub_scores.response_speed || '--'}分</td><td>${(risk.sub_scores.response_speed || 0) >= 80 ? '响应迅速' : '响应偏慢'}</td></tr>`);
+    rows.push(`<tr><td>风险偏好</td><td>高时效高风险 vs 低时效低风险</td><td>${risk.sub_scores.safe_route_preference || '--'}分</td><td>${(risk.sub_scores.safe_route_preference || 0) >= 70 ? '偏好安全路线' : '偏好高风险路线'}</td></tr>`);
+    rows.push(`<tr><td>信息关注</td><td>查看路况/天气/货物频次</td><td>${risk.sub_scores.info_inspection || '--'}分</td><td>${(risk.sub_scores.info_inspection || 0) >= 60 ? '信息查看充分' : '信息查看不足'}</td></tr>`);
+    rows.push(`<tr><td>资源利用</td><td>备用资源调用率及冗余</td><td>${risk.sub_scores.resource_reserve || '--'}分</td><td>${(risk.sub_scores.resource_reserve || 0) >= 60 ? '冗余合理' : '冗余不足或过度'}</td></tr>`);
+  }
+  if (system.sub_scores) {
+    rows.push(`<tr><td>方案变更</td><td>提交前修改方案次数</td><td>${system.sub_scores.alternative_attempts || '--'}分</td><td>${(system.sub_scores.alternative_attempts || 0) >= 60 ? '适度尝试备选' : '方案变更不足'}</td></tr>`);
+  }
+  if (resilience.sub_scores) {
+    rows.push(`<tr><td>决策韧性</td><td>用时稳定性</td><td>${resilience.sub_scores.time_stability || '--'}分</td><td>${(resilience.sub_scores.time_stability || 0) >= 80 ? '用时稳定' : '用时波动'}</td></tr>`);
+  }
+  tbody.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="4" class="text-center text-muted">暂无数据</td></tr>';
+}
+
+async function loadGrowth(sid) {
+  try {
+    const growth = await API.get('/api/profile/' + sid + '/growth');
+    if (!growth.labels || growth.labels.length === 0) {
+      document.getElementById('growth-hint').style.display = '';
+      return;
+    }
+    document.getElementById('growth-hint').style.display = 'none';
+    
+    if (growthChart) growthChart.destroy();
+    const ctx = document.getElementById('growth-chart').getContext('2d');
+    growthChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: growth.labels,
+        datasets: [
+          { label: '风险意识', data: growth.risk, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', tension: 0.3 },
+          { label: '系统思维', data: growth.system, borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,0.1)', tension: 0.3 },
+          { label: '决策韧性', data: growth.resilience, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', tension: 0.3 },
+          { label: '综合', data: growth.overall, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', tension: 0.3, borderDash: [5,5] },
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, max: 100 } },
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  } catch (e) {
+    console.error('成长曲线加载失败:', e);
+  }
+}
+
+// 自动加载
+loadProfile();
+</script>
+{% endblock %}
