@@ -27,4 +27,4 @@ ENV PORT=80
 EXPOSE 80
 
 # 启动命令（CloudBase 云托管通过 PORT 环境变量指定端口）
-CMD gunicorn -w 4 -b 0.0.0.0:${PORT} --timeout 120 wsgi:app
+CMD gunicorn -w 1 -b 0.0.0.0:${PORT} --timeout 120 wsgi:app
