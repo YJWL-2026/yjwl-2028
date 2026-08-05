@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.git
+*.log
+output/
+deploy/
+docs/
+cookies*.txt
+score_*.json
+nul
