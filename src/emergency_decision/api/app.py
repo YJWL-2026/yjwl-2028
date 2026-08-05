@@ -213,6 +213,11 @@ def load_state():
 import json
 load_state()
 
+@app.before_request
+def auto_load_state():
+    """每次请求前从文件同步状态（解决多worker容器的数据一致性问题）"""
+    load_state()
+
 @app.after_request
 def auto_save_state(response):
     """修改操作后自动保存状态"""
