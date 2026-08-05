@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录 - 应急决策教学系统</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                   "Microsoft YaHei", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ===== 左侧主题区 ===== */
+    .hero-side {
+      flex: 1;
+      position: relative;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 30%, #312e81 60%, #4338ca 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 60px;
+      overflow: hidden;
+    }
+
+    /* 装饰光球 */
+    .hero-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.35;
+      animation: float 8s ease-in-out infinite;
+    }
+    .hero-orb-1 { width: 400px; height: 400px; background: #6366f1; top: -80px; left: -80px; }
+    .hero-orb-2 { width: 350px; height: 350px; background: #ec4899; bottom: -60px; right: -40px; animation-delay: 2s; }
+    .hero-orb-3 { width: 280px; height: 280px; background: #06b6d4; top: 45%; right: 20%; animation-delay: 4s; opacity: 0.2; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-30px) scale(1.05); }
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      max-width: 500px;
+    }
+
+    .hero-logo {
+      font-size: 56px;
+      display: inline-block;
+      animation: pulse 2s ease-in-out infinite;
+      margin-bottom: 12px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    .hero-title {
+      font-size: 36px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.3;
+      margin-bottom: 8px;
+    }
+
+    .hero-subtitle {
+      font-size: 16px;
+      color: #c7d2fe;
+      margin-bottom: 40px;
+      letter-spacing: 1px;
+    }
+
+    /* 流程图导航 */
+    .hero-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 32px;
+      padding: 16px 10px;
+    }
+
+    .flow-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 12px 8px;
+      min-width: 70px;
+      transition: all 0.3s ease;
+    }
+
+    .flow-step:hover {
+      background: rgba(255,255,255,0.16);
+      transform: translateY(-3px);
+      border-color: rgba(255,255,255,0.28);
+    }
+
+    .flow-icon {
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+
+    .flow-step-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #e0e7ff;
+      white-space: nowrap;
+    }
+
+    .flow-arrow {
+      font-size: 18px;
+      color: rgba(255,255,255,0.35);
+      font-weight: bold;
+      margin: 0 2px;
+      flex-shrink: 0;
+    }
+
+    /* 底部标签 */
+    .hero-tags {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .hero-tag {
+      font-size: 12px;
+      color: #c7d2fe;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .hero-tag .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #34d399;
+    }
+
+    /* ===== 右侧表单区 ===== */
+    .form-side {
+      width: 520px;
+      max-width: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+      padding: 40px;
+      overflow-y: auto;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .login-header h2 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 6px;
+    }
+
+    .login-header p {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    /* 角色切换Tab */
+    .role-tabs {
+      display: flex;
+      gap: 8px;
+      background: #f1f5f9;
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 24px;
+    }
+
+    .role-tab {
+      flex: 1;
+      text-align: center;
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+      background: transparent;
+    }
+
+    .role-tab.active {
+      background: #ffffff;
+      color: #4f46e5;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .role-tab .role-icon {
+      margin-right: 6px;
+    }
+
+    /* 表单 */
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 15px;
+      color: #1e293b;
+      transition: all 0.2s ease;
+      background: #ffffff;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    }
+
+    .form-input::placeholder {
+      color: #94a3b8;
+    }
+
+    /* 登录按钮 */
+    .btn-login {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 6px;
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    }
+
+    .btn-login:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+    }
+
+    .btn-login:active { transform: translateY(0); }
+    .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* 快速登录区 */
+    .quick-login {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px dashed #e2e8f0;
+    }
+
+    .quick-login-title {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .quick-account {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .quick-account:hover {
+      background: #eef2ff;
+      border-color: #c7d2fe;
+      transform: translateX(4px);
+    }
+
+    .quick-account .qa-avatar {
+      font-size: 24px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .quick-account .qa-info { flex: 1; }
+    .quick-account .qa-name { font-size: 13px; font-weight: 600; color: #1e293b; }
+    .quick-account .qa-account { font-size: 11px; color: #94a3b8; font-family: "Courier New", monospace; }
+    .quick-account .qa-role { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+
+    .qa-role.teacher { background: #fef3c7; color: #92400e; }
+    .qa-role.student { background: #dbeafe; color: #1e40af; }
+
+    /* 错误提示 */
+    .error-msg {
+      display: none;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      animation: shake 0.3s ease;
+    }
+
+    .error-msg.show { display: block; }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+
+    /* 底部信息 */
+    .login-footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    /* 加载动画 */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== 移动端响应式 ===== */
+    @media (max-width: 768px) {
+      body { flex-direction: column; overflow: auto; }
+      .hero-side { display: none; }
+      .form-side { width: 100%; max-width: 100%; min-height: 100vh; padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- ===== 左侧：主题展示区 ===== -->
+  <div class="hero-side">
+    <div class="hero-orb hero-orb-1"></div>
+    <div class="hero-orb hero-orb-2"></div>
+    <div class="hero-orb hero-orb-3"></div>
+
+    <div class="hero-content">
+      <div class="hero-logo">🚨</div>
+      <h1 class="hero-title">应急决策<br>智能体教学系统</h1>
+      <p class="hero-subtitle">Emergency Decision Teaching Platform</p>
+
+      <!-- 流程图导航 -->
+      <div class="hero-flow">
+        <div class="flow-step">
+          <div class="flow-icon">🌐</div>
+          <div class="flow-step-title">灾害预警</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">🔍</div>
+          <div class="flow-step-title">灾害查询</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">📝</div>
+          <div class="flow-step-title">场景生成</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">📤</div>
+          <div class="flow-step-title">任务分发</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">⚡</div>
+          <div class="flow-step-title">学生推演</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">📋</div>
+          <div class="flow-step-title">AI评分</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">📊</div>
+          <div class="flow-step-title">素养画像</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">🔬</div>
+          <div class="flow-step-title">案例生成</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">🧠</div>
+          <div class="flow-step-title">知识库建设</div>
+        </div>
+      </div>
+
+      <div class="hero-tags">
+        <span class="hero-tag"><span class="dot"></span> 实时灾害数据接入</span>
+        <span class="hero-tag"><span class="dot"></span> 9步教学闭环流程</span>
+        <span class="hero-tag"><span class="dot"></span> 无人机应急运输</span>
+        <span class="hero-tag"><span class="dot"></span> 政府签约应急企业</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 右侧：登录表单区 ===== -->
+  <div class="form-side">
+    <div class="login-container">
+      <div class="login-header">
+        <h2>欢迎登录</h2>
+        <p>请选择角色并输入账号密码</p>
+      </div>
+
+      <!-- 角色切换 -->
+      <div class="role-tabs">
+        <button class="role-tab active" data-role="teacher" onclick="switchRole('teacher')">
+          <span class="role-icon">👨‍🏫</span>教师登录
+        </button>
+        <button class="role-tab" data-role="student" onclick="switchRole('student')">
+          <span class="role-icon">👨‍🎓</span>学生登录
+        </button>
+      </div>
+
+      <!-- 错误提示 -->
+      <div class="error-msg" id="errorMsg"></div>
+
+      <!-- 登录表单 -->
+      <form id="loginForm" onsubmit="return doLogin(event)">
+        <div class="form-group">
+          <label class="form-label">账号</label>
+          <input type="text" class="form-input" id="username" placeholder="请输入账号" autocomplete="off" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">密码</label>
+          <input type="password" class="form-input" id="password" placeholder="请输入密码" required>
+        </div>
+        <button type="submit" class="btn-login" id="loginBtn">登 录</button>
+      </form>
+
+      <!-- 快速登录 -->
+      <div class="quick-login">
+        <div class="quick-login-title">— 演示账号，点击一键登录 —</div>
+        <div id="quickAccounts"></div>
+        <div id="studentNote" style="display:none; margin-top:8px; font-size:11px; color:#94a3b8; text-align:center;">student06 ~ student20 密码同为 stud123</div>
+      </div>
+
+      <div class="login-footer">
+        v2.0 | 七模块教学系统 &copy; 2026
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 虚拟账号数据（与后端同步）
+    const ACCOUNTS = {
+      teacher: [
+        { username: "teacher01", password: "teach123", name: "王老师", avatar: "👨‍🏫" },
+        { username: "teacher02", password: "teach456", name: "李老师", avatar: "👩‍🏫" },
+      ],
+      student: [
+        { username: "student01", password: "stud123", name: "张伟", avatar: "🧑‍🎓" },
+        { username: "student02", password: "stud123", name: "刘思怡", avatar: "👩‍🎓" },
+        { username: "student03", password: "stud123", name: "陈浩宇", avatar: "🧑‍🎓" },
+        { username: "student04", password: "stud123", name: "杨雨桐", avatar: "👩‍🎓" },
+        { username: "student05", password: "stud123", name: "赵磊", avatar: "🧑‍🎓" },
+        { username: "student06", password: "stud123", name: "黄家俊", avatar: "🧑‍🎓" },
+        { username: "student07", password: "stud123", name: "周若琳", avatar: "👩‍🎓" },
+        { username: "student08", password: "stud123", name: "吴俊杰", avatar: "🧑‍🎓" },
+        { username: "student09", password: "stud123", name: "徐嘉乐", avatar: "🧑‍🎓" },
+        { username: "student10", password: "stud123", name: "孙悦", avatar: "👩‍🎓" },
+        { username: "student11", password: "stud123", name: "马志远", avatar: "🧑‍🎓" },
+        { username: "student12", password: "stud123", name: "胡瑞阳", avatar: "🧑‍🎓" },
+        { username: "student13", password: "stud123", name: "朱慧琳", avatar: "👩‍🎓" },
+        { username: "student14", password: "stud123", name: "林涛", avatar: "🧑‍🎓" },
+        { username: "student15", password: "stud123", name: "何诗涵", avatar: "👩‍🎓" },
+        { username: "student16", password: "stud123", name: "罗浩天", avatar: "🧑‍🎓" },
+        { username: "student17", password: "stud123", name: "梁梓轩", avatar: "🧑‍🎓" },
+        { username: "student18", password: "stud123", name: "宋佳怡", avatar: "👩‍🎓" },
+        { username: "student19", password: "stud123", name: "郑凯", avatar: "🧑‍🎓" },
+        { username: "student20", password: "stud123", name: "韩雨萱", avatar: "👩‍🎓" },
+      ],
+    };
+
+    let currentRole = "teacher";
+
+    function switchRole(role) {
+      currentRole = role;
+      document.querySelectorAll(".role-tab").forEach(tab => {
+        tab.classList.toggle("active", tab.dataset.role === role);
+      });
+      document.getElementById("username").value = "";
+      document.getElementById("password").value = "";
+      hideError();
+      renderQuickAccounts();
+      // 显示学生账号提示
+      document.getElementById("studentNote").style.display = currentRole === "student" ? "" : "none";
+    }
+
+    function renderQuickAccounts() {
+      const container = document.getElementById("quickAccounts");
+      const accounts = ACCOUNTS[currentRole] || [];
+      const roleLabel = currentRole === "teacher" ? "教师" : "学生";
+      const roleClass = currentRole === "teacher" ? "teacher" : "student";
+
+      container.innerHTML = accounts.map(acc => `
+        <div class="quick-account" onclick="quickLogin('${acc.username}', '${acc.password}')">
+          <div class="qa-avatar">${acc.avatar}</div>
+          <div class="qa-info">
+            <div class="qa-name">${acc.name}</div>
+            <div class="qa-account">${acc.username} / ${acc.password}</div>
+          </div>
+          <span class="qa-role ${roleClass}">${roleLabel}</span>
+        </div>
+      `).join("");
+    }
+
+    function quickLogin(username, password) {
+      document.getElementById("username").value = username;
+      document.getElementById("password").value = password;
+      doLogin(new Event("submit"));
+    }
+
+    function showError(msg) {
+      const el = document.getElementById("errorMsg");
+      el.textContent = msg;
+      el.classList.add("show");
+    }
+
+    function hideError() {
+      document.getElementById("errorMsg").classList.remove("show");
+    }
+
+    async function doLogin(event) {
+      event.preventDefault();
+      hideError();
+
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (!username || !password) {
+        showError("请输入账号和密码");
+        return false;
+      }
+
+      const btn = document.getElementById("loginBtn");
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> 登录中...';
+
+      try {
+        const resp = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok) {
+          showError(data.error || "登录失败");
+          btn.disabled = false;
+          btn.innerHTML = "登 录";
+          return false;
+        }
+
+        btn.innerHTML = "✓ 登录成功";
+        setTimeout(() => {
+          window.location.href = data.redirect || "/";
+        }, 500);
+
+      } catch (err) {
+        showError("网络错误，请检查服务器是否运行");
+        btn.disabled = false;
+        btn.innerHTML = "登 录";
+      }
+
+      return false;
+    }
+
+    (async function checkSession() {
+      try {
+        const resp = await fetch("/api/session");
+        const data = await resp.json();
+        if (data.logged_in) {
+          window.location.href = "/";
+        }
+      } catch (e) {}
+    })();
+
+    renderQuickAccounts();
+  </script>
+</body>
+</html>
