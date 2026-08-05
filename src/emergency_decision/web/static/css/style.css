@@ -124,6 +124,7 @@ body {
   flex: 1;
   margin-left: 240px;
   padding: 24px 32px;
+  padding-top: 80px;
   min-height: 100vh;
 }
 
@@ -701,8 +702,8 @@ select.form-control {
 
 /* ===== 响应式：手机 ===== */
 @media (max-width: 768px) {
-  /* 移动端顶部栏显示 */
-  .mobile-topbar { display: flex; }
+  /* 移动端顶部栏隐藏（七模块导航栏已替代） */
+  .mobile-topbar { display: none !important; }
 
   /* 侧边栏改为抽屉式 */
   .sidebar {

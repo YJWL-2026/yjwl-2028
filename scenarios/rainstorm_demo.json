@@ -10,78 +10,762 @@
       "center_lng": 113.6253,
       "rainfall_mm": 250,
       "waterlogged_roads": [
-        {"road_id": "R-03", "water_depth_cm": 80, "passable": false},
-        {"road_id": "R-05", "water_depth_cm": 45, "passable": true, "speed_limit_kmh": 20}
+        {
+          "road_id": "R-03",
+          "water_depth_cm": 80,
+          "passable": false
+        },
+        {
+          "road_id": "R-05",
+          "water_depth_cm": 45,
+          "passable": true,
+          "speed_limit_kmh": 20
+        }
       ],
       "river_water_level": [
-        {"river_name": "贾鲁河", "water_level_m": 3.5, "warning_level_m": 3.0, "danger_level_m": 4.0},
-        {"river_name": "金水河", "water_level_m": 2.8, "warning_level_m": 2.5, "danger_level_m": 3.5}
+        {
+          "river_name": "贾鲁河",
+          "water_level_m": 3.5,
+          "warning_level_m": 3.0,
+          "danger_level_m": 4.0
+        },
+        {
+          "river_name": "金水河",
+          "water_level_m": 2.8,
+          "warning_level_m": 2.5,
+          "danger_level_m": 3.5
+        }
       ],
       "affected_duration_hours": 36,
-      "affected_areas": ["郑州", "开封", "新乡", "许昌"],
+      "affected_areas": [
+        "郑州",
+        "开封",
+        "新乡",
+        "许昌"
+      ],
       "severity_level": "severe"
-    }
+    },
+    "center_lat": 34.7466,
+    "center_lng": 113.6253,
+    "influence_radius_km": 150
   },
   "logistics_network": {
     "nodes": [
-      {"node_id": "NODE-ZZ01", "node_name": "郑州航空港枢纽", "node_type": "depot", "city": "郑州", "lat": 34.52, "lng": 113.84, "connected_road_ids": ["R-01", "R-02"]},
-      {"node_id": "NODE-ZZ02", "node_name": "郑州经开区转运中心", "node_type": "transfer_center", "city": "郑州", "lat": 34.72, "lng": 113.68, "connected_road_ids": ["R-02", "R-03"]},
-      {"node_id": "NODE-ZZ03", "node_name": "郑州北环仓库区", "node_type": "warehouse", "city": "郑州", "lat": 34.78, "lng": 113.62, "connected_road_ids": ["R-03", "R-04"]},
-      {"node_id": "NODE-KF01", "node_name": "开封物流园", "node_type": "warehouse", "city": "开封", "lat": 34.80, "lng": 114.31, "connected_road_ids": ["R-04", "R-05", "R-06"]},
-      {"node_id": "NODE-XX01", "node_name": "新乡配送站", "node_type": "customer_point", "city": "新乡", "lat": 35.30, "lng": 113.88, "connected_road_ids": ["R-05", "R-07"]},
-      {"node_id": "NODE-XX02", "node_name": "新乡医学院附属医院", "node_type": "customer_point", "city": "新乡", "lat": 35.28, "lng": 113.86, "connected_road_ids": ["R-07", "R-08"]},
-      {"node_id": "NODE-XC01", "node_name": "许昌中转站", "node_type": "junction", "city": "许昌", "lat": 34.03, "lng": 113.85, "connected_road_ids": ["R-06", "R-09"]},
-      {"node_id": "NODE-LH01", "node_name": "漯河备选仓", "node_type": "warehouse", "city": "漯河", "lat": 33.58, "lng": 114.02, "connected_road_ids": ["R-09"]}
+      {
+        "node_id": "NODE-ZZ01",
+        "node_name": "郑州航空港枢纽",
+        "node_type": "depot",
+        "city": "郑州",
+        "lat": 34.52,
+        "lng": 113.84,
+        "connected_road_ids": [
+          "R-01",
+          "R-02"
+        ]
+      },
+      {
+        "node_id": "NODE-ZZ02",
+        "node_name": "郑州经开区转运中心",
+        "node_type": "transfer_center",
+        "city": "郑州",
+        "lat": 34.72,
+        "lng": 113.68,
+        "connected_road_ids": [
+          "R-02",
+          "R-03"
+        ]
+      },
+      {
+        "node_id": "NODE-ZZ03",
+        "node_name": "郑州北环仓库区",
+        "node_type": "warehouse",
+        "city": "郑州",
+        "lat": 34.78,
+        "lng": 113.62,
+        "connected_road_ids": [
+          "R-03",
+          "R-04"
+        ]
+      },
+      {
+        "node_id": "NODE-KF01",
+        "node_name": "开封物流园",
+        "node_type": "warehouse",
+        "city": "开封",
+        "lat": 34.8,
+        "lng": 114.31,
+        "connected_road_ids": [
+          "R-04",
+          "R-05",
+          "R-06"
+        ]
+      },
+      {
+        "node_id": "NODE-XX01",
+        "node_name": "新乡配送站",
+        "node_type": "customer_point",
+        "city": "新乡",
+        "lat": 35.3,
+        "lng": 113.88,
+        "connected_road_ids": [
+          "R-05",
+          "R-07"
+        ]
+      },
+      {
+        "node_id": "NODE-XX02",
+        "node_name": "新乡医学院附属医院",
+        "node_type": "customer_point",
+        "city": "新乡",
+        "lat": 35.28,
+        "lng": 113.86,
+        "connected_road_ids": [
+          "R-07",
+          "R-08"
+        ]
+      },
+      {
+        "node_id": "NODE-XC01",
+        "node_name": "许昌中转站",
+        "node_type": "junction",
+        "city": "许昌",
+        "lat": 34.03,
+        "lng": 113.85,
+        "connected_road_ids": [
+          "R-06",
+          "R-09"
+        ]
+      },
+      {
+        "node_id": "NODE-LH01",
+        "node_name": "漯河备选仓",
+        "node_type": "warehouse",
+        "city": "漯河",
+        "lat": 33.58,
+        "lng": 114.02,
+        "connected_road_ids": [
+          "R-09"
+        ]
+      }
     ],
     "roads": [
-      {"road_id": "R-01", "road_name": "机场高速(航空港-经开区)", "road_type": "highway", "from_node": "NODE-ZZ01", "to_node": "NODE-ZZ02", "is_bidirectional": true, "distance_km": 30, "speed_limit_kmh": 100, "current_travel_time_min": 20, "road_condition": "slow", "has_bridge": true, "has_tunnel": false, "capacity_per_hour": 2000, "toll_cost": 12, "fuel_cost_per_km": 0.8},
-      {"road_id": "R-02", "road_name": "经开区-北环快速路", "road_type": "city_road", "from_node": "NODE-ZZ02", "to_node": "NODE-ZZ03", "is_bidirectional": true, "distance_km": 15, "speed_limit_kmh": 60, "current_travel_time_min": 18, "road_condition": "congested", "has_bridge": false, "has_tunnel": false, "capacity_per_hour": 1500, "toll_cost": 0, "fuel_cost_per_km": 0.8},
-      {"road_id": "R-03", "road_name": "北环-开封省道(积水严重)", "road_type": "provincial", "from_node": "NODE-ZZ03", "to_node": "NODE-KF01", "is_bidirectional": true, "distance_km": 65, "speed_limit_kmh": 80, "current_travel_time_min": 90, "road_condition": "blocked", "has_bridge": true, "has_tunnel": false, "capacity_per_hour": 0, "toll_cost": 0, "fuel_cost_per_km": 0.7},
-      {"road_id": "R-04", "road_name": "开封-新乡高速", "road_type": "highway", "from_node": "NODE-KF01", "to_node": "NODE-XX01", "is_bidirectional": true, "distance_km": 70, "speed_limit_kmh": 100, "current_travel_time_min": 50, "road_condition": "slow", "has_bridge": true, "has_tunnel": false, "capacity_per_hour": 1500, "toll_cost": 25, "fuel_cost_per_km": 0.8},
-      {"road_id": "R-05", "road_name": "开封-新乡国道(部分积水)", "road_type": "national", "from_node": "NODE-KF01", "to_node": "NODE-XX01", "is_bidirectional": true, "distance_km": 75, "speed_limit_kmh": 60, "current_travel_time_min": 120, "road_condition": "congested", "has_bridge": false, "has_tunnel": false, "capacity_per_hour": 600, "toll_cost": 0, "fuel_cost_per_km": 0.7},
-      {"road_id": "R-06", "road_name": "开封-许昌省道", "road_type": "provincial", "from_node": "NODE-KF01", "to_node": "NODE-XC01", "is_bidirectional": true, "distance_km": 55, "speed_limit_kmh": 80, "current_travel_time_min": 45, "road_condition": "clear", "has_bridge": false, "has_tunnel": false, "capacity_per_hour": 1200, "toll_cost": 0, "fuel_cost_per_km": 0.7},
-      {"road_id": "R-07", "road_name": "新乡市区配送路", "road_type": "city_road", "from_node": "NODE-XX01", "to_node": "NODE-XX02", "is_bidirectional": true, "distance_km": 6, "speed_limit_kmh": 40, "current_travel_time_min": 15, "road_condition": "slow", "has_bridge": false, "has_tunnel": false, "capacity_per_hour": 800, "toll_cost": 0, "fuel_cost_per_km": 0.8},
-      {"road_id": "R-08", "road_name": "新乡-许昌县道", "road_type": "county", "from_node": "NODE-XX02", "to_node": "NODE-LH01", "is_bidirectional": true, "distance_km": 80, "speed_limit_kmh": 50, "current_travel_time_min": 96, "road_condition": "clear", "has_bridge": false, "has_tunnel": false, "capacity_per_hour": 500, "toll_cost": 0, "fuel_cost_per_km": 0.6},
-      {"road_id": "R-09", "road_name": "许昌-漯河国道", "road_type": "national", "from_node": "NODE-XC01", "to_node": "NODE-LH01", "is_bidirectional": true, "distance_km": 60, "speed_limit_kmh": 60, "current_travel_time_min": 60, "road_condition": "clear", "has_bridge": false, "has_tunnel": false, "capacity_per_hour": 800, "toll_cost": 0, "fuel_cost_per_km": 0.7}
+      {
+        "road_id": "R-01",
+        "road_name": "机场高速(航空港-经开区)",
+        "road_type": "highway",
+        "from_node": "NODE-ZZ01",
+        "to_node": "NODE-ZZ02",
+        "is_bidirectional": true,
+        "distance_km": 30,
+        "speed_limit_kmh": 100,
+        "current_travel_time_min": 20,
+        "road_condition": "slow",
+        "has_bridge": true,
+        "has_tunnel": false,
+        "capacity_per_hour": 2000,
+        "toll_cost": 12,
+        "fuel_cost_per_km": 0.8
+      },
+      {
+        "road_id": "R-02",
+        "road_name": "经开区-北环快速路",
+        "road_type": "city_road",
+        "from_node": "NODE-ZZ02",
+        "to_node": "NODE-ZZ03",
+        "is_bidirectional": true,
+        "distance_km": 15,
+        "speed_limit_kmh": 60,
+        "current_travel_time_min": 18,
+        "road_condition": "congested",
+        "has_bridge": false,
+        "has_tunnel": false,
+        "capacity_per_hour": 1500,
+        "toll_cost": 0,
+        "fuel_cost_per_km": 0.8
+      },
+      {
+        "road_id": "R-03",
+        "road_name": "北环-开封省道(积水严重)",
+        "road_type": "provincial",
+        "from_node": "NODE-ZZ03",
+        "to_node": "NODE-KF01",
+        "is_bidirectional": true,
+        "distance_km": 65,
+        "speed_limit_kmh": 80,
+        "current_travel_time_min": 90,
+        "road_condition": "blocked",
+        "has_bridge": true,
+        "has_tunnel": false,
+        "capacity_per_hour": 0,
+        "toll_cost": 0,
+        "fuel_cost_per_km": 0.7
+      },
+      {
+        "road_id": "R-04",
+        "road_name": "开封-新乡高速",
+        "road_type": "highway",
+        "from_node": "NODE-KF01",
+        "to_node": "NODE-XX01",
+        "is_bidirectional": true,
+        "distance_km": 70,
+        "speed_limit_kmh": 100,
+        "current_travel_time_min": 50,
+        "road_condition": "slow",
+        "has_bridge": true,
+        "has_tunnel": false,
+        "capacity_per_hour": 1500,
+        "toll_cost": 25,
+        "fuel_cost_per_km": 0.8
+      },
+      {
+        "road_id": "R-05",
+        "road_name": "开封-新乡国道(部分积水)",
+        "road_type": "national",
+        "from_node": "NODE-KF01",
+        "to_node": "NODE-XX01",
+        "is_bidirectional": true,
+        "distance_km": 75,
+        "speed_limit_kmh": 60,
+        "current_travel_time_min": 120,
+        "road_condition": "congested",
+        "has_bridge": false,
+        "has_tunnel": false,
+        "capacity_per_hour": 600,
+        "toll_cost": 0,
+        "fuel_cost_per_km": 0.7
+      },
+      {
+        "road_id": "R-06",
+        "road_name": "开封-许昌省道",
+        "road_type": "provincial",
+        "from_node": "NODE-KF01",
+        "to_node": "NODE-XC01",
+        "is_bidirectional": true,
+        "distance_km": 55,
+        "speed_limit_kmh": 80,
+        "current_travel_time_min": 45,
+        "road_condition": "clear",
+        "has_bridge": false,
+        "has_tunnel": false,
+        "capacity_per_hour": 1200,
+        "toll_cost": 0,
+        "fuel_cost_per_km": 0.7
+      },
+      {
+        "road_id": "R-07",
+        "road_name": "新乡市区配送路",
+        "road_type": "city_road",
+        "from_node": "NODE-XX01",
+        "to_node": "NODE-XX02",
+        "is_bidirectional": true,
+        "distance_km": 6,
+        "speed_limit_kmh": 40,
+        "current_travel_time_min": 15,
+        "road_condition": "slow",
+        "has_bridge": false,
+        "has_tunnel": false,
+        "capacity_per_hour": 800,
+        "toll_cost": 0,
+        "fuel_cost_per_km": 0.8
+      },
+      {
+        "road_id": "R-08",
+        "road_name": "新乡-许昌县道",
+        "road_type": "county",
+        "from_node": "NODE-XX02",
+        "to_node": "NODE-LH01",
+        "is_bidirectional": true,
+        "distance_km": 80,
+        "speed_limit_kmh": 50,
+        "current_travel_time_min": 96,
+        "road_condition": "clear",
+        "has_bridge": false,
+        "has_tunnel": false,
+        "capacity_per_hour": 500,
+        "toll_cost": 0,
+        "fuel_cost_per_km": 0.6
+      },
+      {
+        "road_id": "R-09",
+        "road_name": "许昌-漯河国道",
+        "road_type": "national",
+        "from_node": "NODE-XC01",
+        "to_node": "NODE-LH01",
+        "is_bidirectional": true,
+        "distance_km": 60,
+        "speed_limit_kmh": 60,
+        "current_travel_time_min": 60,
+        "road_condition": "clear",
+        "has_bridge": false,
+        "has_tunnel": false,
+        "capacity_per_hour": 800,
+        "toll_cost": 0,
+        "fuel_cost_per_km": 0.7
+      }
     ]
   },
   "vehicle_fleet": [
-    {"vehicle_id": "V-01", "license_plate": "豫A-101", "vehicle_type": "box_truck", "capacity_tons": 12, "capacity_m3": 55, "current_location_node": "NODE-ZZ01", "current_lat": 34.52, "current_lng": 113.84, "status": "idle", "current_cargo_ids": [], "current_load_tons": 0, "current_load_m3": 0, "driver_name": "孙师傅", "home_depot": "NODE-ZZ01", "cost_per_km": 8.5, "cost_per_hour": 125, "is_refrigerated": false},
-    {"vehicle_id": "V-02", "license_plate": "豫A-102", "vehicle_type": "box_truck", "capacity_tons": 8, "capacity_m3": 40, "current_location_node": "NODE-ZZ01", "current_lat": 34.52, "current_lng": 113.84, "status": "idle", "current_cargo_ids": [], "current_load_tons": 0, "current_load_m3": 0, "driver_name": "周师傅", "home_depot": "NODE-ZZ01", "cost_per_km": 7.5, "cost_per_hour": 110, "is_refrigerated": false},
-    {"vehicle_id": "V-03", "license_plate": "豫A-103", "vehicle_type": "box_truck", "capacity_tons": 10, "capacity_m3": 48, "current_location_node": "NODE-ZZ03", "current_lat": 34.78, "current_lng": 113.62, "status": "in_transit", "current_cargo_ids": ["C-101", "C-102"], "current_load_tons": 5.8, "current_load_m3": 30, "driver_name": "吴师傅", "home_depot": "NODE-ZZ01", "cost_per_km": 8.0, "cost_per_hour": 120, "is_refrigerated": false},
-    {"vehicle_id": "V-04", "license_plate": "豫A-104", "vehicle_type": "refrigerated", "capacity_tons": 6, "capacity_m3": 30, "current_location_node": "NODE-ZZ02", "current_lat": 34.72, "current_lng": 113.68, "status": "idle", "current_cargo_ids": [], "current_load_tons": 0, "current_load_m3": 0, "driver_name": "郑师傅", "home_depot": "NODE-ZZ02", "cost_per_km": 9.0, "cost_per_hour": 130, "is_refrigerated": true},
-    {"vehicle_id": "V-05", "license_plate": "豫B-105", "vehicle_type": "flatbed", "capacity_tons": 15, "capacity_m3": 65, "current_location_node": "NODE-KF01", "current_lat": 34.80, "current_lng": 114.31, "status": "idle", "current_cargo_ids": [], "current_load_tons": 0, "current_load_m3": 0, "driver_name": "马师傅", "home_depot": "NODE-KF01", "cost_per_km": 9.5, "cost_per_hour": 140, "is_refrigerated": false},
-    {"vehicle_id": "V-06", "license_plate": "豫A-106", "vehicle_type": "box_truck", "capacity_tons": 5, "capacity_m3": 25, "current_location_node": "NODE-ZZ01", "current_lat": 34.52, "current_lng": 113.84, "status": "maintenance", "current_cargo_ids": [], "current_load_tons": 0, "current_load_m3": 0, "driver_name": "钱师傅", "home_depot": "NODE-ZZ01", "cost_per_km": 7.0, "cost_per_hour": 100, "is_refrigerated": false}
+    {
+      "vehicle_id": "V-01",
+      "license_plate": "豫A-101",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 12,
+      "capacity_m3": 55,
+      "current_location_node": "NODE-ZZ01",
+      "current_lat": 34.52,
+      "current_lng": 113.84,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "孙师傅",
+      "home_depot": "NODE-ZZ01",
+      "cost_per_km": 8.5,
+      "cost_per_hour": 125,
+      "is_refrigerated": false
+    },
+    {
+      "vehicle_id": "V-02",
+      "license_plate": "豫A-102",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 8,
+      "capacity_m3": 40,
+      "current_location_node": "NODE-ZZ01",
+      "current_lat": 34.52,
+      "current_lng": 113.84,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "周师傅",
+      "home_depot": "NODE-ZZ01",
+      "cost_per_km": 7.5,
+      "cost_per_hour": 110,
+      "is_refrigerated": false
+    },
+    {
+      "vehicle_id": "V-03",
+      "license_plate": "豫A-103",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 10,
+      "capacity_m3": 48,
+      "current_location_node": "NODE-ZZ03",
+      "current_lat": 34.78,
+      "current_lng": 113.62,
+      "status": "in_transit",
+      "current_cargo_ids": [
+        "C-101",
+        "C-102"
+      ],
+      "current_load_tons": 5.8,
+      "current_load_m3": 30,
+      "driver_name": "吴师傅",
+      "home_depot": "NODE-ZZ01",
+      "cost_per_km": 8.0,
+      "cost_per_hour": 120,
+      "is_refrigerated": false
+    },
+    {
+      "vehicle_id": "V-04",
+      "license_plate": "豫A-104",
+      "vehicle_type": "refrigerated",
+      "capacity_tons": 6,
+      "capacity_m3": 30,
+      "current_location_node": "NODE-ZZ02",
+      "current_lat": 34.72,
+      "current_lng": 113.68,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "郑师傅",
+      "home_depot": "NODE-ZZ02",
+      "cost_per_km": 9.0,
+      "cost_per_hour": 130,
+      "is_refrigerated": true
+    },
+    {
+      "vehicle_id": "V-05",
+      "license_plate": "豫B-105",
+      "vehicle_type": "flatbed",
+      "capacity_tons": 15,
+      "capacity_m3": 65,
+      "current_location_node": "NODE-KF01",
+      "current_lat": 34.8,
+      "current_lng": 114.31,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "马师傅",
+      "home_depot": "NODE-KF01",
+      "cost_per_km": 9.5,
+      "cost_per_hour": 140,
+      "is_refrigerated": false
+    },
+    {
+      "vehicle_id": "V-06",
+      "license_plate": "豫A-106",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 5,
+      "capacity_m3": 25,
+      "current_location_node": "NODE-ZZ01",
+      "current_lat": 34.52,
+      "current_lng": 113.84,
+      "status": "maintenance",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "钱师傅",
+      "home_depot": "NODE-ZZ01",
+      "cost_per_km": 7.0,
+      "cost_per_hour": 100,
+      "is_refrigerated": false
+    }
   ],
   "warehouses": [
-    {"warehouse_id": "WH-01", "warehouse_name": "郑州航空港仓", "city": "郑州", "address": "航空港区XX路", "lat": 34.52, "lng": 113.84, "node_id": "NODE-ZZ01", "total_capacity_m3": 6000, "used_capacity_m3": 3500, "storage_cost_per_m3_per_day": 2.5, "supported_cargo_types": ["normal", "refrigerated"], "has_cold_chain": true, "has_dock": 5, "dock_occupancy": 2, "is_24h": true, "damage_status": "normal"},
-    {"warehouse_id": "WH-02", "warehouse_name": "开封物流园仓", "city": "开封", "address": "开封XX大道", "lat": 34.80, "lng": 114.31, "node_id": "NODE-KF01", "total_capacity_m3": 4000, "used_capacity_m3": 1800, "storage_cost_per_m3_per_day": 2.0, "supported_cargo_types": ["normal"], "has_cold_chain": false, "has_dock": 3, "dock_occupancy": 1, "is_24h": true, "damage_status": "damaged"},
-    {"warehouse_id": "WH-03", "warehouse_name": "漯河备选仓", "city": "漯河", "address": "漯河XX区", "lat": 33.58, "lng": 114.02, "node_id": "NODE-LH01", "total_capacity_m3": 2500, "used_capacity_m3": 600, "storage_cost_per_m3_per_day": 1.8, "supported_cargo_types": ["normal"], "has_cold_chain": false, "has_dock": 2, "dock_occupancy": 0, "is_24h": false, "damage_status": "normal"}
+    {
+      "warehouse_id": "WH-01",
+      "warehouse_name": "郑州航空港仓",
+      "city": "郑州",
+      "address": "航空港区XX路",
+      "lat": 34.52,
+      "lng": 113.84,
+      "node_id": "NODE-ZZ01",
+      "total_capacity_m3": 6000,
+      "used_capacity_m3": 3500,
+      "storage_cost_per_m3_per_day": 2.5,
+      "supported_cargo_types": [
+        "normal",
+        "refrigerated"
+      ],
+      "has_cold_chain": true,
+      "has_dock": 5,
+      "dock_occupancy": 2,
+      "is_24h": true,
+      "damage_status": "normal"
+    },
+    {
+      "warehouse_id": "WH-02",
+      "warehouse_name": "开封物流园仓",
+      "city": "开封",
+      "address": "开封XX大道",
+      "lat": 34.8,
+      "lng": 114.31,
+      "node_id": "NODE-KF01",
+      "total_capacity_m3": 4000,
+      "used_capacity_m3": 1800,
+      "storage_cost_per_m3_per_day": 2.0,
+      "supported_cargo_types": [
+        "normal"
+      ],
+      "has_cold_chain": false,
+      "has_dock": 3,
+      "dock_occupancy": 1,
+      "is_24h": true,
+      "damage_status": "damaged"
+    },
+    {
+      "warehouse_id": "WH-03",
+      "warehouse_name": "漯河备选仓",
+      "city": "漯河",
+      "address": "漯河XX区",
+      "lat": 33.58,
+      "lng": 114.02,
+      "node_id": "NODE-LH01",
+      "total_capacity_m3": 2500,
+      "used_capacity_m3": 600,
+      "storage_cost_per_m3_per_day": 1.8,
+      "supported_cargo_types": [
+        "normal"
+      ],
+      "has_cold_chain": false,
+      "has_dock": 2,
+      "dock_occupancy": 0,
+      "is_24h": false,
+      "damage_status": "normal"
+    }
   ],
   "cargo_manifest": [
-    {"cargo_id": "C-101", "order_no": "PO-RS001", "cargo_type": "medical", "description": "防汛医疗物资", "weight_tons": 2.8, "volume_m3": 10, "value_yuan": 95000, "priority_level": "P1", "requires_cold_chain": false, "is_hazardous": false, "origin_node": "NODE-ZZ03", "origin_name": "郑州北环仓库区", "destination_node": "NODE-XX02", "destination_name": "新乡医学院附属医院", "destination_lat": 35.28, "destination_lng": 113.86, "assigned_vehicle_id": "V-03", "current_status": "in_transit", "current_location_node": "NODE-ZZ03", "planned_route": ["NODE-ZZ03", "NODE-KF01", "NODE-XX01", "NODE-XX02"], "current_route_index": 0, "departure_time": "2024-07-20T08:00:00+08:00", "deadline": "2024-07-20T18:00:00+08:00", "contract_penalty_per_hour": 600, "customer_id": "CU-031", "customer_name": "新乡医学院附属医院", "customer_type": "hospital"},
-    {"cargo_id": "C-102", "order_no": "PO-RS002", "cargo_type": "supplies", "description": "救援食品包", "weight_tons": 3.0, "volume_m3": 12, "value_yuan": 18000, "priority_level": "P1", "requires_cold_chain": false, "is_hazardous": false, "origin_node": "NODE-ZZ03", "origin_name": "郑州北环仓库区", "destination_node": "NODE-XX01", "destination_name": "新乡配送站", "destination_lat": 35.30, "destination_lng": 113.88, "assigned_vehicle_id": "V-03", "current_status": "in_transit", "current_location_node": "NODE-ZZ03", "planned_route": ["NODE-ZZ03", "NODE-KF01", "NODE-XX01"], "current_route_index": 0, "departure_time": "2024-07-20T08:00:00+08:00", "deadline": "2024-07-20T20:00:00+08:00", "contract_penalty_per_hour": 400, "customer_id": "CU-032", "customer_name": "新乡应急物资中心", "customer_type": "government"},
-    {"cargo_id": "C-103", "order_no": "PO-RS003", "cargo_type": "urgent", "description": "通信抢修设备", "weight_tons": 2.0, "volume_m3": 8, "value_yuan": 75000, "priority_level": "P2", "requires_cold_chain": false, "is_hazardous": false, "origin_node": "NODE-ZZ01", "origin_name": "郑州航空港枢纽", "destination_node": "NODE-XX01", "destination_name": "新乡配送站", "destination_lat": 35.30, "destination_lng": 113.88, "assigned_vehicle_id": "", "current_status": "pending", "current_location_node": "NODE-ZZ01", "planned_route": ["NODE-ZZ01", "NODE-ZZ02", "NODE-ZZ03", "NODE-KF01", "NODE-XX01"], "current_route_index": 0, "departure_time": "2024-07-20T09:00:00+08:00", "deadline": "2024-07-20T16:00:00+08:00", "contract_penalty_per_hour": 1000, "customer_id": "CU-033", "customer_name": "新乡电信公司", "customer_type": "enterprise"},
-    {"cargo_id": "C-104", "order_no": "PO-RS004", "cargo_type": "normal", "description": "日用品快递", "weight_tons": 2.5, "volume_m3": 12, "value_yuan": 6000, "priority_level": "P3", "requires_cold_chain": false, "is_hazardous": false, "origin_node": "NODE-ZZ01", "origin_name": "郑州航空港枢纽", "destination_node": "NODE-XX01", "destination_name": "新乡配送站", "destination_lat": 35.30, "destination_lng": 113.88, "assigned_vehicle_id": "", "current_status": "pending", "current_location_node": "NODE-ZZ01", "planned_route": ["NODE-ZZ01", "NODE-ZZ02", "NODE-ZZ03", "NODE-KF01", "NODE-XX01"], "current_route_index": 0, "departure_time": "2024-07-20T10:00:00+08:00", "deadline": "2024-07-21T10:00:00+08:00", "contract_penalty_per_hour": 100, "customer_id": "CU-034", "customer_name": "个人客户", "customer_type": "individual"},
-    {"cargo_id": "C-105", "order_no": "PO-RS005", "cargo_type": "perishable", "description": "生鲜冷藏食品", "weight_tons": 1.2, "volume_m3": 5, "value_yuan": 15000, "priority_level": "P2", "requires_cold_chain": true, "is_hazardous": false, "origin_node": "NODE-ZZ02", "origin_name": "郑州经开区转运中心", "destination_node": "NODE-KF01", "destination_name": "开封物流园", "destination_lat": 34.80, "destination_lng": 114.31, "assigned_vehicle_id": "V-04", "current_status": "pending", "current_location_node": "NODE-ZZ02", "planned_route": ["NODE-ZZ02", "NODE-ZZ03", "NODE-KF01"], "current_route_index": 0, "departure_time": "2024-07-20T09:30:00+08:00", "deadline": "2024-07-20T15:00:00+08:00", "contract_penalty_per_hour": 500, "customer_id": "CU-035", "customer_name": "开封商超", "customer_type": "supermarket"},
-    {"cargo_id": "C-106", "order_no": "PO-RS006", "cargo_type": "normal", "description": "建材运输", "weight_tons": 6.0, "volume_m3": 25, "value_yuan": 10000, "priority_level": "P3", "requires_cold_chain": false, "is_hazardous": false, "origin_node": "NODE-ZZ01", "origin_name": "郑州航空港枢纽", "destination_node": "NODE-KF01", "destination_name": "开封物流园", "destination_lat": 34.80, "destination_lng": 114.31, "assigned_vehicle_id": "", "current_status": "pending", "current_location_node": "NODE-ZZ01", "planned_route": ["NODE-ZZ01", "NODE-ZZ02", "NODE-ZZ03", "NODE-KF01"], "current_route_index": 0, "departure_time": "2024-07-20T11:00:00+08:00", "deadline": "2024-07-21T18:00:00+08:00", "contract_penalty_per_hour": 80, "customer_id": "CU-036", "customer_name": "开封建材市场", "customer_type": "enterprise"},
-    {"cargo_id": "C-107", "order_no": "PO-RS007", "cargo_type": "medical", "description": "应急药品一批", "weight_tons": 3.5, "volume_m3": 14, "value_yuan": 110000, "priority_level": "P1", "requires_cold_chain": false, "is_hazardous": false, "origin_node": "NODE-ZZ01", "origin_name": "郑州航空港枢纽", "destination_node": "NODE-XX02", "destination_name": "新乡医学院附属医院", "destination_lat": 35.28, "destination_lng": 113.86, "assigned_vehicle_id": "", "current_status": "pending", "current_location_node": "NODE-ZZ01", "planned_route": ["NODE-ZZ01", "NODE-ZZ02", "NODE-ZZ03", "NODE-KF01", "NODE-XX01", "NODE-XX02"], "current_route_index": 0, "departure_time": "2024-07-20T08:30:00+08:00", "deadline": "2024-07-20T22:00:00+08:00", "contract_penalty_per_hour": 700, "customer_id": "CU-037", "customer_name": "新乡红十字会", "customer_type": "hospital"}
+    {
+      "cargo_id": "C-101",
+      "order_no": "PO-RS001",
+      "cargo_type": "medical",
+      "description": "防汛医疗物资",
+      "weight_tons": 2.8,
+      "volume_m3": 10,
+      "value_yuan": 95000,
+      "priority_level": "P1",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-ZZ03",
+      "origin_name": "郑州北环仓库区",
+      "destination_node": "NODE-XX02",
+      "destination_name": "新乡医学院附属医院",
+      "destination_lat": 35.28,
+      "destination_lng": 113.86,
+      "assigned_vehicle_id": "V-03",
+      "current_status": "in_transit",
+      "current_location_node": "NODE-ZZ03",
+      "planned_route": [
+        "NODE-ZZ03",
+        "NODE-KF01",
+        "NODE-XX01",
+        "NODE-XX02"
+      ],
+      "current_route_index": 0,
+      "departure_time": "2024-07-20T08:00:00+08:00",
+      "deadline": "2024-07-20T18:00:00+08:00",
+      "contract_penalty_per_hour": 600,
+      "customer_id": "CU-031",
+      "customer_name": "新乡医学院附属医院",
+      "customer_type": "hospital"
+    },
+    {
+      "cargo_id": "C-102",
+      "order_no": "PO-RS002",
+      "cargo_type": "supplies",
+      "description": "救援食品包",
+      "weight_tons": 3.0,
+      "volume_m3": 12,
+      "value_yuan": 18000,
+      "priority_level": "P1",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-ZZ03",
+      "origin_name": "郑州北环仓库区",
+      "destination_node": "NODE-XX01",
+      "destination_name": "新乡配送站",
+      "destination_lat": 35.3,
+      "destination_lng": 113.88,
+      "assigned_vehicle_id": "V-03",
+      "current_status": "in_transit",
+      "current_location_node": "NODE-ZZ03",
+      "planned_route": [
+        "NODE-ZZ03",
+        "NODE-KF01",
+        "NODE-XX01"
+      ],
+      "current_route_index": 0,
+      "departure_time": "2024-07-20T08:00:00+08:00",
+      "deadline": "2024-07-20T20:00:00+08:00",
+      "contract_penalty_per_hour": 400,
+      "customer_id": "CU-032",
+      "customer_name": "新乡应急物资中心",
+      "customer_type": "government"
+    },
+    {
+      "cargo_id": "C-103",
+      "order_no": "PO-RS003",
+      "cargo_type": "urgent",
+      "description": "通信抢修设备",
+      "weight_tons": 2.0,
+      "volume_m3": 8,
+      "value_yuan": 75000,
+      "priority_level": "P2",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-ZZ01",
+      "origin_name": "郑州航空港枢纽",
+      "destination_node": "NODE-XX01",
+      "destination_name": "新乡配送站",
+      "destination_lat": 35.3,
+      "destination_lng": 113.88,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-ZZ01",
+      "planned_route": [
+        "NODE-ZZ01",
+        "NODE-ZZ02",
+        "NODE-ZZ03",
+        "NODE-KF01",
+        "NODE-XX01"
+      ],
+      "current_route_index": 0,
+      "departure_time": "2024-07-20T09:00:00+08:00",
+      "deadline": "2024-07-20T16:00:00+08:00",
+      "contract_penalty_per_hour": 1000,
+      "customer_id": "CU-033",
+      "customer_name": "新乡电信公司",
+      "customer_type": "enterprise"
+    },
+    {
+      "cargo_id": "C-104",
+      "order_no": "PO-RS004",
+      "cargo_type": "normal",
+      "description": "日用品快递",
+      "weight_tons": 2.5,
+      "volume_m3": 12,
+      "value_yuan": 6000,
+      "priority_level": "P3",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-ZZ01",
+      "origin_name": "郑州航空港枢纽",
+      "destination_node": "NODE-XX01",
+      "destination_name": "新乡配送站",
+      "destination_lat": 35.3,
+      "destination_lng": 113.88,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-ZZ01",
+      "planned_route": [
+        "NODE-ZZ01",
+        "NODE-ZZ02",
+        "NODE-ZZ03",
+        "NODE-KF01",
+        "NODE-XX01"
+      ],
+      "current_route_index": 0,
+      "departure_time": "2024-07-20T10:00:00+08:00",
+      "deadline": "2024-07-21T10:00:00+08:00",
+      "contract_penalty_per_hour": 100,
+      "customer_id": "CU-034",
+      "customer_name": "个人客户",
+      "customer_type": "individual"
+    },
+    {
+      "cargo_id": "C-105",
+      "order_no": "PO-RS005",
+      "cargo_type": "perishable",
+      "description": "生鲜冷藏食品",
+      "weight_tons": 1.2,
+      "volume_m3": 5,
+      "value_yuan": 15000,
+      "priority_level": "P2",
+      "requires_cold_chain": true,
+      "is_hazardous": false,
+      "origin_node": "NODE-ZZ02",
+      "origin_name": "郑州经开区转运中心",
+      "destination_node": "NODE-KF01",
+      "destination_name": "开封物流园",
+      "destination_lat": 34.8,
+      "destination_lng": 114.31,
+      "assigned_vehicle_id": "V-04",
+      "current_status": "pending",
+      "current_location_node": "NODE-ZZ02",
+      "planned_route": [
+        "NODE-ZZ02",
+        "NODE-ZZ03",
+        "NODE-KF01"
+      ],
+      "current_route_index": 0,
+      "departure_time": "2024-07-20T09:30:00+08:00",
+      "deadline": "2024-07-20T15:00:00+08:00",
+      "contract_penalty_per_hour": 500,
+      "customer_id": "CU-035",
+      "customer_name": "开封商超",
+      "customer_type": "supermarket"
+    },
+    {
+      "cargo_id": "C-106",
+      "order_no": "PO-RS006",
+      "cargo_type": "normal",
+      "description": "建材运输",
+      "weight_tons": 6.0,
+      "volume_m3": 25,
+      "value_yuan": 10000,
+      "priority_level": "P3",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-ZZ01",
+      "origin_name": "郑州航空港枢纽",
+      "destination_node": "NODE-KF01",
+      "destination_name": "开封物流园",
+      "destination_lat": 34.8,
+      "destination_lng": 114.31,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-ZZ01",
+      "planned_route": [
+        "NODE-ZZ01",
+        "NODE-ZZ02",
+        "NODE-ZZ03",
+        "NODE-KF01"
+      ],
+      "current_route_index": 0,
+      "departure_time": "2024-07-20T11:00:00+08:00",
+      "deadline": "2024-07-21T18:00:00+08:00",
+      "contract_penalty_per_hour": 80,
+      "customer_id": "CU-036",
+      "customer_name": "开封建材市场",
+      "customer_type": "enterprise"
+    },
+    {
+      "cargo_id": "C-107",
+      "order_no": "PO-RS007",
+      "cargo_type": "medical",
+      "description": "应急药品一批",
+      "weight_tons": 3.5,
+      "volume_m3": 14,
+      "value_yuan": 110000,
+      "priority_level": "P1",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-ZZ01",
+      "origin_name": "郑州航空港枢纽",
+      "destination_node": "NODE-XX02",
+      "destination_name": "新乡医学院附属医院",
+      "destination_lat": 35.28,
+      "destination_lng": 113.86,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-ZZ01",
+      "planned_route": [
+        "NODE-ZZ01",
+        "NODE-ZZ02",
+        "NODE-ZZ03",
+        "NODE-KF01",
+        "NODE-XX01",
+        "NODE-XX02"
+      ],
+      "current_route_index": 0,
+      "departure_time": "2024-07-20T08:30:00+08:00",
+      "deadline": "2024-07-20T22:00:00+08:00",
+      "contract_penalty_per_hour": 700,
+      "customer_id": "CU-037",
+      "customer_name": "新乡红十字会",
+      "customer_type": "hospital"
+    }
   ],
   "evaluation": {
     "config_id": "EVAL-CFG-RS001",
     "scenario_id": "RS-2024-ZHENGZHOU-001",
     "benchmark_cost": 50000,
     "benchmark_delivery_time_hours": 24,
-    "weights": {"timeliness": 0.30, "economic": 0.25, "feasibility": 0.25, "compliance": 0.20},
-    "bonus_rules": [{"rule": "first_submit_bonus", "score": 5}],
-    "penalty_rules": [{"rule": "timeout_penalty", "score": -10}],
-    "compliance_priority_list": ["medical", "supplies"]
+    "weights": {
+      "timeliness": 0.3,
+      "economic": 0.25,
+      "feasibility": 0.25,
+      "compliance": 0.2
+    },
+    "bonus_rules": [
+      {
+        "rule": "first_submit_bonus",
+        "score": 5
+      }
+    ],
+    "penalty_rules": [
+      {
+        "rule": "timeout_penalty",
+        "score": -10
+      }
+    ],
+    "compliance_priority_list": [
+      "medical",
+      "supplies"
+    ]
   },
   "strategy_config": {
     "mode": "budget_constrained",
     "time_limit_sec": 600,
     "hide_optimal_until_submit": false,
-    "objective_weights": {"w_cost": 0.3, "w_time": 0.4, "w_risk": 0.2, "w_comp": 0.1},
+    "objective_weights": {
+      "w_cost": 0.3,
+      "w_time": 0.4,
+      "w_risk": 0.2,
+      "w_comp": 0.1
+    },
     "generate_alternatives": true,
     "max_alternatives": 2
   }

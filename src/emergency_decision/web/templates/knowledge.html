@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+{% block title %}建 · 知识库建设 - 应急决策教学系统{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;">
+    <div style="width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg, #14b8a6, #0d9488); display:flex; align-items:center; justify-content:center; font-size:22px; color:#fff; font-weight:800;">建</div>
+    <div>
+      <h2 style="font-size:22px; font-weight:700; margin:0;">{% if current_user and current_user.role == 'teacher' %}知识库建设{% else %}知识库浏览{% endif %}</h2>
+      <p style="font-size:13px; color:#64748b; margin:0;">
+    {% if current_user and current_user.role == 'teacher' %}
+    持续接入新数据 · 更新知识图谱
+    {% else %}
+    浏览知识图谱与实体库
+    {% endif %}
+  </p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 知识库状态概览 ====== -->
+<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-bottom:24px;">
+  <div class="card" style="padding:20px; margin:0;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:#f0fdfa; display:flex; align-items:center; justify-content:center; font-size:22px;">🧩</div>
+      <div>
+        <div style="font-size:26px; font-weight:700; color:#0d9488;" id="stat-entities">0</div>
+        <div style="font-size:12px; color:#64748b;">知识实体</div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="padding:20px; margin:0;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:#ecfdf5; display:flex; align-items:center; justify-content:center; font-size:22px;">🔗</div>
+      <div>
+        <div style="font-size:26px; font-weight:700; color:#059669;" id="stat-relations">0</div>
+        <div style="font-size:12px; color:#64748b;">关系连接</div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="padding:20px; margin:0;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:#f0f9ff; display:flex; align-items:center; justify-content:center; font-size:22px;">📡</div>
+      <div>
+        <div style="font-size:26px; font-weight:700; color:#0369a1;" id="stat-sources">0</div>
+        <div style="font-size:12px; color:#64748b;">数据源</div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="padding:20px; margin:0;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:#fefce8; display:flex; align-items:center; justify-content:center; font-size:22px;">📝</div>
+      <div>
+        <div style="font-size:26px; font-weight:700; color:#a16207;" id="stat-updates">0</div>
+        <div style="font-size:12px; color:#64748b;">更新记录</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 左右布局：知识图谱 + 数据源管理 ====== -->
+<div style="display:grid; {% if current_user and current_user.role == 'teacher' %}grid-template-columns:1.4fr 0.6fr{% else %}grid-template-columns:1fr{% endif %}; gap:20px; margin-bottom:20px;">
+
+  <!-- 左：知识图谱可视化 -->
+  <div class="card" style="margin:0;">
+    <div class="card-header">
+      <h3>🕸️ 知识图谱</h3>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button class="btn btn-outline btn-sm" onclick="loadGraph()">🔄 刷新</button>
+        {% if current_user and current_user.role == 'teacher' %}
+        <button class="btn btn-primary btn-sm" style="background:#0d9488;" onclick="showAddEntityModal()">+ 新增实体</button>
+        {% endif %}
+      </div>
+    </div>
+    <div id="graph-container" style="height:420px; background:#f8fafc; border-radius:12px; border:1px solid #e5e7eb; position:relative; overflow:hidden;">
+      <svg id="graph-svg" width="100%" height="100%" viewBox="0 0 600 420" style="display:block;">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" />
+          </marker>
+        </defs>
+        <g id="graph-nodes"></g>
+        <g id="graph-edges"></g>
+      </svg>
+      <div id="graph-loading" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-size:13px;">正在加载知识图谱...</div>
+    </div>
+    <div id="graph-legend" style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px; padding:8px 0;"></div>
+  </div>
+
+  <!-- 右：数据源管理（仅教师） -->
+  {% if current_user and current_user.role == 'teacher' %}
+  <div class="card" style="margin:0;">
+    <div class="card-header">
+      <h3>📡 数据源管理</h3>
+      <button class="btn btn-primary btn-sm" style="background:#0d9488;" onclick="showAddSourceModal()">+ 接入</button>
+    </div>
+    <div id="source-list" style="max-height:420px; overflow-y:auto;">
+      <div style="text-align:center; padding:30px; color:#94a3b8;">
+        <div style="font-size:28px; margin-bottom:8px;">📡</div>
+        <div style="font-size:13px;">正在加载数据源...</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ====== 实体列表 + 更新日志 ====== -->
+<div style="display:grid; grid-template-columns:1fr 0.8fr; gap:20px;">
+
+  <!-- 左：知识实体列表 -->
+  <div class="card" style="margin:0;">
+    <div class="card-header">
+      <h3>🧩 知识实体库</h3>
+      <select id="entity-category-filter" class="form-control" style="width:140px; padding:6px 10px; border-radius:8px; border:1px solid #d1d5db; font-size:12px;" onchange="loadEntities()">
+        <option value="">全部分类</option>
+      </select>
+    </div>
+    <div id="entity-list" style="max-height:400px; overflow-y:auto;">
+      <div style="text-align:center; padding:30px; color:#94a3b8;">
+        <div style="font-size:28px; margin-bottom:8px;">🧩</div>
+        <div style="font-size:13px;">正在加载实体...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右：更新日志 -->
+  <div class="card" style="margin:0;">
+    <div class="card-header">
+      <h3>📝 更新日志</h3>
+      <span style="font-size:11px; color:#94a3b8;" id="last-update">最近无更新</span>
+    </div>
+    <div id="update-log" style="max-height:400px; overflow-y:auto;">
+      <div style="text-align:center; padding:30px; color:#94a3b8;">
+        <div style="font-size:28px; margin-bottom:8px;">📝</div>
+        <div style="font-size:13px;">正在加载日志...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 模态框 ====== -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal-content" style="max-width:500px;">
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const _categoryColors = {
+  '灾害': '#ef4444', '运输方式': '#3b82f6', '基础设施': '#f59e0b',
+  '决策': '#8b5cf6', '物资': '#10b981', '其他': '#64748b'
+};
+
+// ====== 知识库状态 ======
+async function loadStatus() {
+  try {
+    const data = await API.get('/api/knowledge/status');
+    document.getElementById('stat-entities').textContent = data.entity_count;
+    document.getElementById('stat-relations').textContent = data.relation_count;
+    document.getElementById('stat-sources').textContent = data.source_count;
+    document.getElementById('stat-updates').textContent = data.update_count;
+    if (data.last_update) {
+      document.getElementById('last-update').textContent = '最近更新：' + data.last_update;
+    }
+    // 更新分类筛选
+    const sel = document.getElementById('entity-category-filter');
+    const currentVal = sel.value;
+    const categories = data.categories || [];
+    sel.innerHTML = '<option value="">全部分类</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+    sel.value = currentVal;
+    // 更新图例
+    const legend = document.getElementById('graph-legend');
+    legend.innerHTML = categories.map(c => {
+      const color = _categoryColors[c] || '#64748b';
+      return `<span style="display:inline-flex; align-items:center; gap:4px; font-size:12px; color:#64748b;"><span style="width:10px; height:10px; border-radius:50%; background:${color};"></span>${c}</span>`;
+    }).join('');
+  } catch (e) { console.error(e); }
+}
+
+// ====== 知识图谱可视化 ======
+async function loadGraph() {
+  try {
+    const data = await API.get('/api/knowledge/graph');
+    const nodes = data.nodes || [];
+    const edges = data.edges || [];
+    document.getElementById('graph-loading').style.display = 'none';
+
+    // 圆形布局
+    const cx = 300, cy = 210, r = 150;
+    nodes.forEach((node, i) => {
+      const angle = (i / nodes.length) * 2 * Math.PI - Math.PI / 2;
+      node.x = cx + r * Math.cos(angle);
+      node.y = cy + r * Math.sin(angle);
+    });
+
+    // 绘制边
+    const edgesG = document.getElementById('graph-edges');
+    edgesG.innerHTML = edges.map(e => {
+      const s = nodes.find(n => n.id === e.source);
+      const t = nodes.find(n => n.id === e.target);
+      if (!s || !t) return '';
+      const mx = (s.x + t.x) / 2;
+      const my = (s.y + t.y) / 2;
+      return `
+        <line x1="${s.x}" y1="${s.y}" x2="${t.x}" y2="${t.y}" stroke="#cbd5e1" stroke-width="1.5" marker-end="url(#arrowhead)" />
+        <text x="${mx}" y="${my}" font-size="9" fill="#94a3b8" text-anchor="middle" dy="-3">${e.relation}</text>
+      `;
+    }).join('');
+
+    // 绘制节点
+    const nodesG = document.getElementById('graph-nodes');
+    nodesG.innerHTML = nodes.map(node => {
+      const color = _categoryColors[node.category] || '#64748b';
+      return `
+        <g style="cursor:pointer;" onclick="showEntityDetail('${node.id}', '${node.name}', '${node.category}', '${node.description}')">
+          <circle cx="${node.x}" cy="${node.y}" r="26" fill="${color}" fill-opacity="0.15" stroke="${color}" stroke-width="2" />
+          <text x="${node.x}" y="${node.y - 2}" font-size="10" fill="#1e293b" text-anchor="middle" font-weight="600">${node.name}</text>
+          <text x="${node.x}" y="${node.y + 10}" font-size="8" fill="#94a3b8" text-anchor="middle">${node.category}</text>
+        </g>
+      `;
+    }).join('');
+  } catch (e) {
+    document.getElementById('graph-loading').textContent = '加载失败: ' + e.message;
+  }
+}
+
+function showEntityDetail(id, name, category, desc) {
+  showToast(`${name} [${category}]: ${desc}`);
+}
+
+// ====== 知识实体列表 ======
+async function loadEntities() {
+  const category = document.getElementById('entity-category-filter').value;
+  try {
+    const url = '/api/knowledge/entities' + (category ? '?category=' + encodeURIComponent(category) : '');
+    const data = await API.get(url);
+    const entities = data.entities || [];
+    const el = document.getElementById('entity-list');
+    if (entities.length === 0) {
+      el.innerHTML = '<div style="text-align:center; padding:30px; color:#94a3b8;"><div style="font-size:28px;">🧩</div><div style="font-size:13px;">暂无实体</div></div>';
+      return;
+    }
+    el.innerHTML = entities.map(e => {
+      const color = _categoryColors[e.category] || '#64748b';
+      return `
+        <div style="display:flex; align-items:center; gap:12px; padding:12px; border-bottom:1px solid #f1f5f9;">
+          <div style="width:36px; height:36px; border-radius:8px; background:${color}20; border:1px solid ${color}40; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <span style="font-size:16px;">🧩</span>
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:13px; font-weight:600; color:#1e293b;">${e.name}</div>
+            <div style="font-size:11px; color:#94a3b8;">${e.description || '无描述'}</div>
+          </div>
+          <span style="font-size:10px; padding:2px 8px; border-radius:4px; background:${color}15; color:${color}; font-weight:600; flex-shrink:0;">${e.category}</span>
+        </div>
+      `;
+    }).join('');
+  } catch (e) { handleError(e, '加载实体'); }
+}
+
+// ====== 数据源管理 ======
+async function loadSources() {
+  try {
+    const data = await API.get('/api/knowledge/sources');
+    const sources = data.sources || [];
+    const el = document.getElementById('source-list');
+    if (sources.length === 0) {
+      el.innerHTML = '<div style="text-align:center; padding:30px; color:#94a3b8;"><div style="font-size:28px; margin-bottom:8px;">📡</div><div style="font-size:13px;">暂无数据源</div></div>';
+      return;
+    }
+    const typeIcons = {api:'🔌', database:'🗄️', file:'📄', manual:'✍️'};
+    el.innerHTML = sources.map(s => `
+      <div style="display:flex; align-items:center; gap:12px; padding:12px; border-bottom:1px solid #f1f5f9;">
+        <div style="width:36px; height:36px; border-radius:8px; background:#f0fdfa; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0;">
+          ${typeIcons[s.type] || '📡'}
+        </div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; font-weight:600; color:#1e293b;">${s.name}</div>
+          <div style="font-size:11px; color:#94a3b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.url || s.type || ''} · ${s.record_count}条记录</div>
+        </div>
+        <span style="font-size:10px; padding:2px 8px; border-radius:4px; background:#ecfdf5; color:#059669; font-weight:600; flex-shrink:0;">${s.status}</span>
+      </div>
+    `).join('');
+  } catch (e) { handleError(e, '加载数据源'); }
+}
+
+// ====== 更新日志 ======
+async function loadUpdates() {
+  try {
+    const data = await API.get('/api/knowledge/updates');
+    const updates = data.updates || [];
+    const el = document.getElementById('update-log');
+    if (updates.length === 0) {
+      el.innerHTML = '<div style="text-align:center; padding:30px; color:#94a3b8;"><div style="font-size:28px; margin-bottom:8px;">📝</div><div style="font-size:13px;">暂无更新记录</div></div>';
+      return;
+    }
+    const typeIcons = {add_entity:'➕', add_source:'📡', update_entity:'✏️', remove_entity:'🗑️'};
+    const typeLabels = {add_entity:'新增实体', add_source:'接入数据源', update_entity:'更新实体', remove_entity:'删除实体'};
+    el.innerHTML = updates.map(u => `
+      <div style="display:flex; gap:10px; padding:10px 0; border-bottom:1px solid #f1f5f9;">
+        <span style="font-size:14px;">${typeIcons[u.type] || '📝'}</span>
+        <div style="flex:1;">
+          <div style="font-size:12px; font-weight:600; color:#1e293b;">${typeLabels[u.type] || u.type}</div>
+          <div style="font-size:11px; color:#94a3b8;">${u.entity || u.source || ''}</div>
+          <div style="font-size:10px; color:#cbd5e1; margin-top:2px;">${u.time}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) { console.error(e); }
+}
+
+// ====== 新增实体 ======
+function showAddEntityModal() {
+  const body = `
+    <h3 style="margin-bottom:20px;">新增知识实体</h3>
+    <div class="form-group">
+      <label class="form-label">实体名称</label>
+      <input type="text" class="form-control" id="ent-name" placeholder="如：冷链运输" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px;">
+    </div>
+    <div class="form-group">
+      <label class="form-label">分类</label>
+      <select id="ent-category" class="form-control" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px;">
+        <option value="灾害">灾害</option>
+        <option value="运输方式">运输方式</option>
+        <option value="基础设施">基础设施</option>
+        <option value="决策">决策</option>
+        <option value="物资">物资</option>
+        <option value="其他">其他</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">描述</label>
+      <textarea class="form-control" id="ent-desc" placeholder="实体描述..." style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px; min-height:80px; resize:vertical;"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" style="background:#0d9488;" onclick="addEntity()">添加</button>
+    </div>
+  `;
+  showModal(body);
+}
+
+async function addEntity() {
+  const name = document.getElementById('ent-name').value.trim();
+  const category = document.getElementById('ent-category').value;
+  const desc = document.getElementById('ent-desc').value.trim();
+  if (!name) { showToast('请输入实体名称', true); return; }
+  try {
+    await API.post('/api/knowledge/entities', { name, category, description: desc });
+    showToast('实体添加成功');
+    closeModal();
+    loadStatus();
+    loadEntities();
+    loadGraph();
+    loadUpdates();
+  } catch (e) { handleError(e, '添加实体'); }
+}
+
+// ====== 接入数据源 ======
+function showAddSourceModal() {
+  const body = `
+    <h3 style="margin-bottom:20px;">接入新数据源</h3>
+    <div class="form-group">
+      <label class="form-label">数据源名称</label>
+      <input type="text" class="form-control" id="src-name" placeholder="如：国家地震台网API" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px;">
+    </div>
+    <div class="form-group">
+      <label class="form-label">类型</label>
+      <select id="src-type" class="form-control" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px;">
+        <option value="api">🔌 API接口</option>
+        <option value="database">🗄️ 数据库</option>
+        <option value="file">📄 文件</option>
+        <option value="manual">✍️ 手动录入</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">URL/路径</label>
+      <input type="text" class="form-control" id="src-url" placeholder="如：https://api.example.com/data" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px;">
+    </div>
+    <div class="form-group">
+      <label class="form-label">记录数（估计）</label>
+      <input type="number" class="form-control" id="src-count" placeholder="0" value="0" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px;">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" style="background:#0d9488;" onclick="addSource()">接入</button>
+    </div>
+  `;
+  showModal(body);
+}
+
+async function addSource() {
+  const name = document.getElementById('src-name').value.trim();
+  const type = document.getElementById('src-type').value;
+  const url = document.getElementById('src-url').value.trim();
+  const count = parseInt(document.getElementById('src-count').value) || 0;
+  if (!name) { showToast('请输入数据源名称', true); return; }
+  try {
+    await API.post('/api/knowledge/sources', { name, type, url, record_count: count });
+    showToast('数据源接入成功');
+    closeModal();
+    loadStatus();
+    loadSources();
+    loadUpdates();
+  } catch (e) { handleError(e, '接入数据源'); }
+}
+
+// ====== 模态框 ======
+function showModal(html) {
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('active');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+}
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ====== 初始化 ======
+loadStatus();
+loadGraph();
+loadEntities();
+loadSources();
+loadUpdates();
+</script>
+{% endblock %}

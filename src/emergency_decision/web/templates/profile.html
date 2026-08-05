@@ -5,7 +5,7 @@
 <div class="topbar">
   <h2>素养画像 <span class="text-sm text-muted">（育）</span></h2>
   <div class="actions">
-    <input type="text" class="form-control" id="student-id-input" value="STU-001" placeholder="学生ID" style="width: 200px;">
+    <input type="text" class="form-control" id="student-id-input" value="" placeholder="请输入学号（如 student01）" style="width: 200px;">
     <button class="btn btn-primary" onclick="loadProfile()">查询画像</button>
   </div>
 </div>
@@ -126,11 +126,13 @@
 
 {% block scripts %}
 <script>
+const _studentId = '{{ current_user.username if current_user else "" }}';
 let radarChart = null;
 let growthChart = null;
 
 async function loadProfile() {
-  const sid = document.getElementById('student-id-input').value || 'STU-001';
+  const sid = document.getElementById('student-id-input').value || '';
+  if (!sid) { alert('请输入学号'); return; }
   document.getElementById('student-id-display').textContent = '学生: ' + sid;
   
   try {
@@ -276,7 +278,10 @@ async function loadGrowth(sid) {
   }
 }
 
-// 自动加载
-loadProfile();
+// 自动加载：如果是学生登录，直接查询自己的画像
+if (_studentId) {
+  document.getElementById('student-id-input').value = _studentId;
+  loadProfile();
+}
 </script>
 {% endblock %}

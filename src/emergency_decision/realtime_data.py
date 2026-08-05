@@ -483,6 +483,109 @@ def _match_city(text: str) -> tuple:
     return 35.0, 105.0  # 全国中心
 
 
+# ============================================================
+# 省份 → 车牌前缀映射
+# ============================================================
+PROVINCE_TO_PLATE: dict[str, str] = {
+    "北京": "京", "天津": "津", "上海": "沪", "重庆": "渝",
+    "河北": "冀", "山西": "晋", "辽宁": "辽", "吉林": "吉", "黑龙江": "黑",
+    "江苏": "苏", "浙江": "浙", "安徽": "皖", "福建": "闽", "江西": "赣", "山东": "鲁",
+    "河南": "豫", "湖北": "鄂", "湖南": "湘", "广东": "粤", "广西": "桂", "海南": "琼",
+    "四川": "川", "贵州": "贵", "云南": "云", "西藏": "藏",
+    "陕西": "陕", "甘肃": "甘", "青海": "青", "宁夏": "宁", "新疆": "新",
+    "内蒙古": "蒙", "香港": "港", "澳门": "澳", "台湾": "台",
+}
+
+# 省份→省会/典型城市坐标（用于从坐标反查省份）
+PROVINCE_CAPITAL_COORDS: dict[str, tuple[float, float]] = {
+    "北京": (39.90, 116.40), "天津": (39.13, 117.19), "上海": (31.23, 121.47),
+    "重庆": (29.56, 106.55), "河北": (38.04, 114.51), "山西": (37.87, 112.55),
+    "辽宁": (41.80, 123.43), "吉林": (43.82, 125.32), "黑龙江": (45.80, 126.53),
+    "江苏": (32.06, 118.80), "浙江": (30.27, 120.15), "安徽": (31.82, 117.23),
+    "福建": (26.07, 119.30), "江西": (28.68, 115.86), "山东": (36.65, 117.00),
+    "河南": (34.75, 113.65), "湖北": (30.59, 114.31), "湖南": (28.23, 112.94),
+    "广东": (23.13, 113.26), "广西": (22.82, 108.37), "海南": (20.02, 110.35),
+    "四川": (30.67, 104.07), "贵州": (26.65, 106.71), "云南": (25.04, 102.71),
+    "西藏": (29.65, 91.13), "陕西": (34.27, 108.95), "甘肃": (36.06, 103.82),
+    "青海": (36.62, 101.78), "宁夏": (38.47, 106.23), "新疆": (43.83, 87.62),
+    "内蒙古": (40.82, 111.67), "香港": (22.32, 114.17), "澳门": (22.20, 113.55),
+    "台湾": (25.03, 121.57),
+}
+
+
+def get_license_plate_prefix(province: str) -> str:
+    """根据省份名获取车牌前缀（支持简称模糊匹配）
+
+    Args:
+        province: 省份名，如 "河南"、"四川"、"闽" 等
+
+    Returns:
+        车牌前缀，如 "豫"、"川"、"闽"。未匹配时返回 "豫"
+    """
+    if not province:
+        return "豫"
+
+    # 1. 如果传入的已经是简称（单个字），尝试验证
+    if len(province) == 1:
+        # 查找该简称是否在映射表中
+        for full_name, prefix in PROVINCE_TO_PLATE.items():
+            if prefix == province:
+                return prefix
+        # 也检查是否本身就是全名中的单字缩写
+        for full_name in PROVINCE_TO_PLATE:
+            if province in full_name:
+                return PROVINCE_TO_PLATE[full_name]
+
+    # 2. 精确匹配全名
+    if province in PROVINCE_TO_PLATE:
+        return PROVINCE_TO_PLATE[province]
+
+    # 3. 模糊匹配：检查省份名是否包含传入的字符串（如 "河南省" 匹配 "河南"）
+    for full_name, prefix in PROVINCE_TO_PLATE.items():
+        if full_name in province or province in full_name:
+            return prefix
+
+    return "豫"
+
+
+def get_province_from_location(location_text: str) -> str:
+    """从位置文本中提取省份名
+
+    Args:
+        location_text: 如 "四川阿坝州汶川县"、"云南普洱市墨江县"
+
+    Returns:
+        省份名，如 "四川"、"云南"
+    """
+    if not location_text:
+        return ""
+    for full_name in PROVINCE_TO_PLATE:
+        if full_name in location_text:
+            return full_name
+    return ""
+
+
+def get_province_from_coords(lat: float, lng: float) -> str:
+    """根据坐标查找最近省份（简易实现：找最近省会）
+
+    Args:
+        lat: 纬度
+        lng: 经度
+
+    Returns:
+        省份名
+    """
+    import math
+    best_prov = ""
+    best_dist = float("inf")
+    for prov, (p_lat, p_lng) in PROVINCE_CAPITAL_COORDS.items():
+        dist = math.sqrt((lat - p_lat) ** 2 + (lng - p_lng) ** 2)
+        if dist < best_dist:
+            best_dist = dist
+            best_prov = prov
+    return best_prov
+
+
 def _parse_alert_level(text: str) -> str:
     """从文本中解析预警等级"""
     if "红色" in text or "红" in text:
@@ -750,6 +853,9 @@ def earthquake_to_scenario_params(eq: EarthquakeInfo) -> dict:
     else:
         severity = "小震，影响较小"
 
+    # 从震中位置提取省份
+    province = get_province_from_location(eq.location) or get_province_from_coords(eq.latitude, eq.longitude)
+
     return {
         "source": "中国地震台网实时数据",
         "event_id": eq.event_id,
@@ -764,6 +870,7 @@ def earthquake_to_scenario_params(eq: EarthquakeInfo) -> dict:
         "time": eq.time,
         "report_time": eq.report_time,
         "eq_type": "正式" if eq.eq_type == "reviewed" else "自动速报",
+        "province": province,
     }
 
 
@@ -783,6 +890,12 @@ def typhoon_to_scenario_params(detail: dict) -> dict:
         radius = 150
         severity = "热带风暴，局部影响"
 
+    # 根据台风当前位置坐标反查省份
+    province = get_province_from_coords(
+        detail.get("current_lat", 0),
+        detail.get("current_lng", 0),
+    )
+
     return {
         "source": "中央气象台台风网实时数据",
         "typhoon_id": detail.get("typhoon_id"),
@@ -798,6 +911,7 @@ def typhoon_to_scenario_params(detail: dict) -> dict:
         "start_time": detail.get("start_time", ""),
         "stop_time": detail.get("stop_time", ""),
         "current_level": detail.get("current_level", ""),
+        "province": province,
     }
 
 
@@ -821,6 +935,16 @@ def weather_alert_to_scenario_params(alert: dict) -> dict:
         "洪水": {"disaster_type": "rainstorm", "severity": "洪水预警，需防范河流泛滥"},
         "地质灾害": {"disaster_type": "landslide", "severity": "地质灾害预警，需防范山体滑坡和泥石流"},
         "山洪": {"disaster_type": "landslide", "severity": "山洪预警，需防范山区洪水"},
+        "地震": {"disaster_type": "earthquake", "severity": "地震预警，需防范建筑倒塌和次生灾害"},
+        "台风": {"disaster_type": "typhoon", "severity": "台风预警，需防范大风和暴雨"},
+        "大风": {"disaster_type": "typhoon", "severity": "大风预警，需防范建筑和设施损坏"},
+        "雷电": {"disaster_type": "rainstorm", "severity": "雷电预警，需防范雷击和短时强降水"},
+        "山体滑坡": {"disaster_type": "landslide", "severity": "山体滑坡预警，需防范道路阻断和地质灾害"},
+        "暴雪": {"disaster_type": "snowstorm", "severity": "暴雪预警，需防范道路积雪和低温"},
+        "沙尘暴": {"disaster_type": "sandstorm", "severity": "沙尘暴预警，需防范能见度降低和呼吸道疾病"},
+        "森林火灾": {"disaster_type": "wildfire", "severity": "森林火灾预警，需防范火势蔓延和空气污染"},
+        "海啸": {"disaster_type": "tsunami", "severity": "海啸预警，需防范沿海地区淹没"},
+        "高温": {"disaster_type": "other", "severity": "高温预警，需防范中暑和用电安全"},
     }
     type_info = type_map.get(alert_type, {"disaster_type": "rainstorm", "severity": "灾害预警"})
 

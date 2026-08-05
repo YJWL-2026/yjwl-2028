@@ -1,0 +1,895 @@
+{% extends "base.html" %}
+{% block title %}管 · 课程管理 - 应急决策教学系统{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;">
+    <div style="width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg, #06b6d4, #0891b2); display:flex; align-items:center; justify-content:center; font-size:22px; color:#fff; font-weight:800;">管</div>
+    <div>
+      <h2 style="font-size:22px; font-weight:700; margin:0;">课程管理</h2>
+      <p style="font-size:13px; color:#64748b; margin:0;">课堂分组 · 任务分发 · 进度监控</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 统计概览 ====== -->
+<div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-bottom:24px;">
+  <div class="card" style="padding:20px; margin:0;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:#ecfeff; display:flex; align-items:center; justify-content:center; font-size:22px;">📚</div>
+      <div>
+        <div style="font-size:26px; font-weight:700; color:#0891b2;" id="stat-classes">0</div>
+        <div style="font-size:12px; color:#64748b;">班级总数</div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="padding:20px; margin:0;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:#fef3c7; display:flex; align-items:center; justify-content:center; font-size:22px;">👥</div>
+      <div>
+        <div style="font-size:26px; font-weight:700; color:#d97706;" id="stat-students">0</div>
+        <div style="font-size:12px; color:#64748b;">学生总数</div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="padding:20px; margin:0;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:#f0f9ff; display:flex; align-items:center; justify-content:center; font-size:22px;">📋</div>
+      <div>
+        <div style="font-size:26px; font-weight:700; color:#0369a1;" id="stat-tasks">0</div>
+        <div style="font-size:12px; color:#64748b;">已发任务</div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="padding:20px; margin:0;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="width:44px; height:44px; border-radius:10px; background:#f0fdf4; display:flex; align-items:center; justify-content:center; font-size:22px;">📊</div>
+      <div>
+        <div style="font-size:26px; font-weight:700; color:#15803d;" id="stat-progress">0%</div>
+        <div style="font-size:12px; color:#64748b;">平均完成率</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if current_user and current_user.role == 'teacher' %}
+<!-- ============================== -->
+<!-- ====== 教师视角 ====== -->
+<!-- ============================== -->
+<div class="tab-bar" style="display:flex; gap:8px; margin-bottom:20px; border-bottom:2px solid #e5e7eb; padding-bottom:0;">
+  <button class="tab-btn active" onclick="switchTab('classes', this)" style="padding:10px 20px; border:none; background:none; font-size:14px; font-weight:600; color:#0891b2; cursor:pointer; border-bottom:3px solid #06b6d4; margin-bottom:-2px;">📚 班级管理</button>
+  <button class="tab-btn" onclick="switchTab('groups', this)" style="padding:10px 20px; border:none; background:none; font-size:14px; font-weight:600; color:#64748b; cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px;">👥 课堂分组</button>
+  <button class="tab-btn" onclick="switchTab('tasks', this)" style="padding:10px 20px; border:none; background:none; font-size:14px; font-weight:600; color:#64748b; cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px;">📋 组任务分发</button>
+  <button class="tab-btn" onclick="switchTab('progress', this)" style="padding:10px 20px; border:none; background:none; font-size:14px; font-weight:600; color:#64748b; cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px;">📊 进度监控</button>
+  <button class="tab-btn" onclick="switchTab('unfinished', this)" style="padding:10px 20px; border:none; background:none; font-size:14px; font-weight:600; color:#64748b; cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px;">⚠️ 未完成提醒</button>
+</div>
+
+<!-- Tab: 班级管理 -->
+<div id="tab-classes" class="tab-content">
+  <div id="class-list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:16px;"></div>
+</div>
+
+<!-- Tab: 课堂分组 -->
+<div id="tab-groups" class="tab-content" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <h3 style="font-size:16px; font-weight:600; margin:0;">分组管理</h3>
+    <div style="display:flex; gap:8px;">
+      <select id="group-class-select" style="width:200px; padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; font-size:13px;"></select>
+      <button class="btn btn-outline btn-sm" onclick="autoGroup()">🎲 一键自动分组</button>
+      <button class="btn btn-primary btn-sm" onclick="showCreateGroupModal()">+ 手动创建分组</button>
+    </div>
+  </div>
+  <div id="group-list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:16px;"></div>
+</div>
+
+<!-- Tab: 组任务分发 -->
+<div id="tab-tasks" class="tab-content" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <h3 style="font-size:16px; font-weight:600; margin:0;">组任务列表</h3>
+    <button class="btn btn-primary btn-sm" onclick="showAssignGroupTaskModal()">+ 分发组任务</button>
+  </div>
+  <div id="task-list" style="display:flex; flex-direction:column; gap:16px;"></div>
+</div>
+
+<!-- Tab: 进度监控 -->
+<div id="tab-progress" class="tab-content" style="display:none;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+    <h3 style="font-size:16px; font-weight:600; margin:0;">学生进度监控</h3>
+    <select id="progress-class-select" style="width:200px; padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; font-size:13px;" onchange="loadProgress()"></select>
+  </div>
+  <div id="progress-dashboard"></div>
+</div>
+
+<!-- Tab: 未完成提醒 -->
+<div id="tab-unfinished" class="tab-content" style="display:none;">
+  <div style="margin-bottom:16px;">
+    <h3 style="font-size:16px; font-weight:600; margin:0 0 4px 0;">⚠️ 未完成作业学生名单</h3>
+    <p style="font-size:13px; color:#64748b; margin:0;">包含未确认组任务和未提交个人任务的学生</p>
+  </div>
+  <div id="unfinished-list"></div>
+</div>
+
+{% else %}
+<!-- ============================== -->
+<!-- ====== 学生视角 ====== -->
+<!-- ============================== -->
+<div class="tab-bar" style="display:flex; gap:8px; margin-bottom:20px; border-bottom:2px solid #e5e7eb; padding-bottom:0;">
+  <button class="tab-btn active" onclick="switchTab('mygroup', this)" style="padding:10px 20px; border:none; background:none; font-size:14px; font-weight:600; color:#0891b2; cursor:pointer; border-bottom:3px solid #06b6d4; margin-bottom:-2px;">👥 我的分组</button>
+  <button class="tab-btn" onclick="switchTab('mytask', this)" style="padding:10px 20px; border:none; background:none; font-size:14px; font-weight:600; color:#64748b; cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px;">📋 我的任务</button>
+  <button class="tab-btn" onclick="switchTab('groupstatus', this)" style="padding:10px 20px; border:none; background:none; font-size:14px; font-weight:600; color:#64748b; cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px;">📊 小组完成情况</button>
+</div>
+
+<!-- Tab: 我的分组 -->
+<div id="tab-mygroup" class="tab-content">
+  <div id="my-group-panel"></div>
+</div>
+
+<!-- Tab: 我的任务 -->
+<div id="tab-mytask" class="tab-content" style="display:none;">
+  <div id="my-task-list" style="display:flex; flex-direction:column; gap:16px;"></div>
+</div>
+
+<!-- Tab: 小组完成情况 -->
+<div id="tab-groupstatus" class="tab-content" style="display:none;">
+  <div id="group-status-panel"></div>
+</div>
+
+{% endif %}
+
+<!-- ====== 模态框 ====== -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal-content" style="max-width:600px;">
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const _currentUser = {{ current_user | tojson }};
+const _isTeacher = _currentUser && _currentUser.role === 'teacher';
+const _studentId = _currentUser ? _currentUser.username : '';
+const _studentName = _currentUser ? _currentUser.name : '';
+let _currentClassId = '{{ "CLS-202601" }}';
+
+// ====== Tab 切换 ======
+function switchTab(tab, btnEl) {
+  document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+  document.getElementById('tab-' + tab).style.display = '';
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.style.color = '#64748b';
+    btn.style.borderBottom = '3px solid transparent';
+  });
+  if (btnEl) {
+    btnEl.style.color = '#0891b2';
+    btnEl.style.borderBottom = '3px solid #06b6d4';
+  }
+
+  if (_isTeacher) {
+    if (tab === 'classes') loadClasses();
+    if (tab === 'groups') loadGroups();
+    if (tab === 'tasks') loadGroupTasks();
+    if (tab === 'progress') loadProgress();
+    if (tab === 'unfinished') loadUnfinished();
+  } else {
+    if (tab === 'mygroup') loadMyGroup();
+    if (tab === 'mytask') loadMyTasks();
+    if (tab === 'groupstatus') loadGroupStatus();
+  }
+}
+
+// ====== 通用工具 ======
+function showModal(html) {
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('active');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+}
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ===========================================================
+// ====== 教师功能 ======
+// ===========================================================
+
+// --- 班级管理 ---
+async function loadClasses() {
+  try {
+    const data = await API.get('/api/manage/classes');
+    const classes = data.classes || [];
+    document.getElementById('stat-classes').textContent = classes.length;
+    let totalStudents = 0;
+    classes.forEach(c => totalStudents += c.student_count);
+    document.getElementById('stat-students').textContent = totalStudents;
+
+    // 填充分组选择器
+    const opts = classes.map(c => `<option value="${c.class_id}" ${c.class_id===_currentClassId?'selected':''}>${c.name}</option>`).join('');
+    document.getElementById('group-class-select').innerHTML = opts;
+    document.getElementById('progress-class-select').innerHTML = opts;
+
+    const el = document.getElementById('class-list');
+    if (classes.length === 0) {
+      el.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8; grid-column:1/-1;"><div style="font-size:28px; margin-bottom:8px;">📭</div><div style="font-size:13px;">暂无班级</div></div>';
+      return;
+    }
+    el.innerHTML = classes.map(c => `
+      <div style="padding:20px; border-radius:12px; background:#fff; border:1px solid #e5e7eb;">
+        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">
+          <div>
+            <div style="font-size:15px; font-weight:700; color:#1e293b;">${c.name}</div>
+            <div style="font-size:12px; color:#94a3b8; margin-top:2px;">教师：${c.teacher || '未设置'}</div>
+          </div>
+          <span style="font-size:11px; padding:3px 8px; border-radius:4px; background:#ecfeff; color:#0891b2; font-weight:600;">${c.class_id}</span>
+        </div>
+        <div style="display:flex; gap:16px; margin-bottom:12px;">
+          <div><span style="font-size:24px; font-weight:700; color:#1e293b;">${c.student_count}</span> <span style="font-size:12px; color:#64748b;">学生</span></div>
+          <div><span style="font-size:24px; font-weight:700; color:#1e293b;">${c.group_count}</span> <span style="font-size:12px; color:#64748b;">分组</span></div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button onclick="goToGroups('${c.class_id}')" style="flex:1; padding:8px; border:1px solid #e5e7eb; border-radius:8px; font-size:12px; font-weight:600; color:#475569; cursor:pointer; background:#fff;">分组管理</button>
+          <button onclick="goToTasks('${c.class_id}')" style="flex:1; padding:8px; border:1px solid #e5e7eb; border-radius:8px; font-size:12px; font-weight:600; color:#475569; cursor:pointer; background:#fff;">组任务</button>
+        </div>
+        <div style="font-size:11px; color:#94a3b8; margin-top:8px;">创建于 ${c.created_at}</div>
+      </div>
+    `).join('');
+  } catch (e) { console.error(e); showToast('加载班级失败', true); }
+}
+
+function goToGroups(classId) {
+  _currentClassId = classId;
+  document.getElementById('group-class-select').value = classId;
+  document.querySelector('.tab-btn[onclick*="groups"]').click();
+}
+function goToTasks(classId) {
+  _currentClassId = classId;
+  document.querySelector('.tab-btn[onclick*="tasks"]').click();
+}
+
+// --- 分组管理 ---
+async function loadGroups() {
+  if (!_currentClassId) {
+    const data = await API.get('/api/manage/classes');
+    const classes = data.classes || [];
+    if (classes.length > 0) _currentClassId = classes[0].class_id;
+  }
+  try {
+    const data = await API.get('/api/manage/classes/' + _currentClassId + '/groups');
+    const groups = data.groups || [];
+    const ungrouped = data.ungrouped || [];
+    const el = document.getElementById('group-list');
+    let html = '';
+
+    // 未分组学生区
+    if (ungrouped.length > 0) {
+      html += `
+        <div style="grid-column:1/-1; padding:16px; border-radius:12px; background:#fffbeb; border:1px dashed #fcd34d; margin-bottom:8px;">
+          <div style="font-size:13px; font-weight:600; color:#92400e; margin-bottom:10px;">📌 未分组学生（${ungrouped.length}人）</div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            ${ungrouped.map(s => `<span style="padding:5px 12px; background:#fff; border:1px solid #fcd34d; border-radius:20px; font-size:12px; color:#92400e;">${s.avatar} ${s.name}</span>`).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    if (groups.length === 0 && ungrouped.length === 0) {
+      html = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:#94a3b8;"><div style="font-size:28px;">👥</div><div style="font-size:13px;">暂无分组数据</div></div>';
+    }
+
+    html += groups.map(g => {
+      const memberBadges = (g.members || []).map(m => {
+        const isLeader = m.student_id === g.leader;
+        return `<span style="display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border-radius:16px; font-size:12px; ${isLeader ? 'background:#dbeafe; border:1px solid #93c5fd; color:#1e40af; font-weight:600;' : 'background:#f0f9ff; border:1px solid #bae6fd; color:#0369a1;'}">
+          ${m.avatar} ${m.name}${isLeader ? ' 👑' : ''}
+        </span>`;
+      }).join('');
+      return `
+        <div style="padding:20px; border-radius:12px; background:#fff; border:1px solid #e5e7eb;">
+          <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:10px;">
+            <div>
+              <div style="font-size:14px; font-weight:700; color:#1e293b;">${g.name}</div>
+              <div style="font-size:11px; color:#94a3b8; margin-top:2px;">${g.self_organized ? '🧑‍🤝‍🧑 学生自组' : '👨‍🏫 教师创建'} · ${g.members.length}人</div>
+            </div>
+            <div style="display:flex; gap:4px;">
+              <button onclick="showAdjustModal('${g.group_id}','rename')" style="padding:4px 8px; border:1px solid #e5e7eb; border-radius:6px; font-size:11px; cursor:pointer; background:#fff;">改名</button>
+              <button onclick="showAdjustModal('${g.group_id}','set_leader')" style="padding:4px 8px; border:1px solid #e5e7eb; border-radius:6px; font-size:11px; cursor:pointer; background:#fff;">设组长</button>
+              <button onclick="showAdjustModal('${g.group_id}','add_member')" style="padding:4px 8px; border:1px solid #e5e7eb; border-radius:6px; font-size:11px; cursor:pointer; background:#fff;">+组员</button>
+            </div>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;">${memberBadges || '<span style="font-size:12px; color:#cbd5e1;">暂无成员</span>'}</div>
+          ${(g.members||[]).map(m => `<button onclick="removeMember('${g.group_id}','${m.student_id}')" style="margin-right:4px; margin-bottom:4px; padding:2px 8px; border:1px solid #fecaca; border-radius:4px; font-size:11px; color:#dc2626; cursor:pointer; background:#fff;">移除 ${m.name}</button>`).join('')}
+        </div>
+      `;
+    }).join('');
+    el.innerHTML = html;
+  } catch (e) { console.error(e); showToast('加载分组失败', true); }
+}
+
+async function autoGroup() {
+  const size = prompt('每组几人？（4或5）', '4');
+  if (!size) return;
+  try {
+    const data = await API.post('/api/manage/groups/auto', { class_id: _currentClassId, group_size: parseInt(size) });
+    showToast(`自动分组完成，新建${data.new_groups}个分组`);
+    loadGroups();
+  } catch (e) { console.error(e); showToast('自动分组失败', true); }
+}
+
+function showCreateGroupModal() {
+  const body = `
+    <h3 style="margin-bottom:20px;">创建分组</h3>
+    <div class="form-group"><label class="form-label">分组名称</label>
+      <input type="text" class="form-control" id="grp-name" placeholder="如：第一小组" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px;"></div>
+    <div class="form-group"><label class="form-label">组长学生ID</label>
+      <input type="text" class="form-control" id="grp-leader" placeholder="如：student01" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px;"></div>
+    <div class="form-group"><label class="form-label">组员ID（逗号分隔）</label>
+      <input type="text" class="form-control" id="grp-members" placeholder="如：student02,student03,student04" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="createGroup()">创建</button>
+    </div>`;
+  showModal(body);
+}
+
+async function createGroup() {
+  const name = document.getElementById('grp-name').value.trim();
+  const leader = document.getElementById('grp-leader').value.trim();
+  const members = document.getElementById('grp-members').value.split(',').map(s => s.trim()).filter(s => s);
+  if (!name) { showToast('请输入分组名称', true); return; }
+  const allMembers = [leader, ...members].filter(s => s);
+  if (allMembers.length > 5) { showToast('每组最多5人', true); return; }
+  try {
+    await API.post('/api/manage/classes/' + _currentClassId + '/groups', { name, leader, members: allMembers });
+    showToast('分组创建成功');
+    closeModal();
+    loadGroups();
+  } catch (e) { console.error(e); showToast('创建失败', true); }
+}
+
+function showAdjustModal(groupId, action) {
+  let body = '';
+  if (action === 'rename') {
+    body = `
+      <h3 style="margin-bottom:20px;">重命名分组</h3>
+      <input type="text" class="form-control" id="adj-name" placeholder="新名称" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px; margin-bottom:16px;">
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="doAdjust('${groupId}','rename')">确认</button></div>`;
+  } else if (action === 'set_leader') {
+    body = `
+      <h3 style="margin-bottom:20px;">设置组长</h3>
+      <input type="text" class="form-control" id="adj-leader" placeholder="学生ID，如：student03" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px; margin-bottom:16px;">
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="doAdjust('${groupId}','set_leader')">确认</button></div>`;
+  } else if (action === 'add_member') {
+    body = `
+      <h3 style="margin-bottom:20px;">添加组员</h3>
+      <input type="text" class="form-control" id="adj-member" placeholder="学生ID，如：student05" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px; margin-bottom:16px;">
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="doAdjust('${groupId}','add_member')">确认</button></div>`;
+  }
+  showModal(body);
+}
+
+async function doAdjust(groupId, action) {
+  const payload = { class_id: _currentClassId, action };
+  if (action === 'rename') payload.name = document.getElementById('adj-name').value.trim();
+  else if (action === 'set_leader') payload.leader = document.getElementById('adj-leader').value.trim();
+  else if (action === 'add_member') payload.student_id = document.getElementById('adj-member').value.trim();
+  try {
+    await API.post('/api/manage/groups/' + groupId + '/adjust', payload);
+    showToast('操作成功');
+    closeModal();
+    loadGroups();
+  } catch (e) { console.error(e); showToast('操作失败', true); }
+}
+
+async function removeMember(groupId, studentId) {
+  if (!confirm(`确定移除该成员？`)) return;
+  try {
+    await API.post('/api/manage/groups/' + groupId + '/adjust', { class_id: _currentClassId, action: 'remove_member', student_id: studentId });
+    showToast('已移除');
+    loadGroups();
+  } catch (e) { showToast('操作失败', true); }
+}
+
+// --- 组任务分发 ---
+async function loadGroupTasks() {
+  try {
+    const data = await API.get('/api/manage/group-tasks/' + _currentClassId);
+    const tasks = data.tasks || [];
+    document.getElementById('stat-tasks').textContent = tasks.length;
+    const el = document.getElementById('task-list');
+    if (tasks.length === 0) {
+      el.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;"><div style="font-size:28px;">📋</div><div style="font-size:13px;">暂无组任务，点击"分发组任务"开始</div></div>';
+      return;
+    }
+    el.innerHTML = tasks.map(t => {
+      const confs = Object.values(t.confirmations || {});
+      const statusColors = { published: '#94a3b8', leader_accepted: '#f59e0b', in_progress: '#3b82f6', completed: '#10b981' };
+      const statusLabels = { published: '待组长确认', leader_accepted: '组长已确认', in_progress: '进行中', completed: '已完成' };
+      const sc = statusColors[t.status] || '#94a3b8';
+      const sl = statusLabels[t.status] || t.status;
+      return `
+        <div style="padding:20px; border-radius:12px; background:#fff; border:1px solid #e5e7eb;">
+          <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">
+            <div>
+              <div style="font-size:15px; font-weight:700; color:#1e293b;">${t.title}</div>
+              <div style="font-size:12px; color:#64748b; margin-top:2px;">${t.scenario_id || '通用场景'} · 截止：${t.deadline || '无限制'} · 创建：${t.created_at}</div>
+            </div>
+            <span style="font-size:11px; padding:4px 10px; border-radius:6px; background:${sc}22; color:${sc}; font-weight:600;">${sl}</span>
+          </div>
+          ${t.description ? `<div style="font-size:12px; color:#64748b; margin-bottom:12px;">${t.description}</div>` : ''}
+          <div style="padding:12px; background:#f8fafc; border-radius:8px; margin-bottom:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+              <div style="font-size:12px; color:#64748b;">✅ 确认进度：${t.leader_confirmed_count}/${t.total_groups}组 · 全部确认：${t.all_confirmed_count}/${t.total_groups}组</div>
+            </div>
+            <div style="font-size:12px; color:#64748b;">
+              ⚡ 决策完成：${t.decision_completed_count || 0}/${t.total_members || 0}人（${t.decision_pct || 0}%）
+            </div>
+            <div style="height:6px; background:#e5e7eb; border-radius:3px; margin-top:6px; overflow:hidden;">
+              <div style="height:100%; width:${t.decision_pct || 0}%; background:linear-gradient(90deg,#f59e0b,#10b981); border-radius:3px; transition:width 0.5s;"></div>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:12px;">
+            ${confs.map(c => {
+              const leaderDone = c.leader_confirmed;
+              const memberCfs = c.member_confirmations || {};
+              const membersDone = Object.values(memberCfs).filter(v => v).length;
+              const totalMembers = (c.members || []).length;
+              return `
+                <div style="padding:14px; border-radius:10px; background:#f8fafc; border:1px solid #e2e8f0;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <span style="font-size:13px; font-weight:600; color:#1e293b;">${c.group_name}</span>
+                    <span style="font-size:11px; ${leaderDone ? 'color:#10b981' : 'color:#ef4444'}">${leaderDone ? '✓ 组长已确认' : '⏳ 待组长确认'}</span>
+                  </div>
+                  <div style="font-size:11px; color:#64748b; margin-bottom:6px;">组长：${c.leader ? _name(c.leader) : '未指定'}</div>
+                  <div style="font-size:11px; color:#64748b; margin-bottom:4px;">组员确认：${membersDone}/${totalMembers}</div>
+                  <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                    ${(c.members||[]).map(mid => {
+                      const done = memberCfs[mid];
+                      return `<span style="font-size:10px; padding:2px 8px; border-radius:10px; ${done ? 'background:#d1fae5; color:#059669;' : 'background:#fee2e2; color:#dc2626;'}">${done ? '✓' : '○'} ${_name(mid)}</span>`;
+                    }).join('')}
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) { console.error(e); showToast('加载任务失败', true); }
+}
+
+function _name(sid) {
+  const map = {
+    student01:'张伟',student02:'刘思怡',student03:'陈浩宇',student04:'杨雨桐',student05:'赵磊',
+    student06:'黄家俊',student07:'周若琳',student08:'吴俊杰',student09:'徐嘉乐',student10:'孙悦',
+    student11:'马志远',student12:'胡瑞阳',student13:'朱慧琳',student14:'林涛',student15:'何诗涵',
+    student16:'罗浩天',student17:'梁梓轩',student18:'宋佳怡',student19:'郑凯',student20:'韩雨萱',
+    teacher01:'王老师',teacher02:'李老师'
+  };
+  return map[sid] || sid;
+}
+
+function showAssignGroupTaskModal() {
+  const body = `
+    <h3 style="margin-bottom:20px;">分发组任务</h3>
+    <div class="form-group"><label class="form-label">任务标题</label>
+      <input type="text" class="form-control" id="gt-title" placeholder="如：地震应急运输演练" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px;"></div>
+    <div class="form-group"><label class="form-label">任务描述</label>
+      <textarea class="form-control" id="gt-desc" placeholder="任务说明..." style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px; min-height:60px;"></textarea></div>
+    <div class="form-group"><label class="form-label">关联场景（可选）</label>
+      <select class="form-control" id="gt-scenario" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+        <option value="">-- 选择场景 --</option>
+      </select></div>
+    <div class="form-group"><label class="form-label">截止时间</label>
+      <input type="datetime-local" class="form-control" id="gt-deadline" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px;"></div>
+    <div class="form-group"><label class="form-label">分配分组</label>
+      <div id="gt-groups" style="display:flex; flex-direction:column; gap:6px; max-height:200px; overflow-y:auto; padding:8px; border:1px solid #d1d5db; border-radius:8px;">
+        <div style="font-size:12px; color:#94a3b8;">加载中...</div>
+      </div></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="assignGroupTask()">分发</button></div>`;
+  showModal(body);
+  // 加载场景列表到下拉菜单
+  API.get('/api/scenarios').then(data => {
+    const sel = document.getElementById('gt-scenario');
+    (data || []).forEach(s => {
+      sel.innerHTML += `<option value="${s.scenario_id}">${s.scenario_name} (${s.disaster_type || ''})</option>`;
+    });
+  }).catch(() => {});
+  // 加载分组列表到复选框
+  API.get('/api/manage/classes/' + _currentClassId + '/groups').then(data => {
+    const groups = data.groups || [];
+    const container = document.getElementById('gt-groups');
+    if (groups.length === 0) {
+      container.innerHTML = '<div style="font-size:12px; color:#ef4444;">暂无分组，请先创建分组</div>';
+      return;
+    }
+    container.innerHTML = groups.map(g => `
+      <label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:6px; cursor:pointer;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background=''">
+        <input type="checkbox" value="${g.group_id}" style="cursor:pointer;"> 
+        <span style="font-size:13px;">${g.name} (${g.members.length}人)</span>
+      </label>
+    `).join('');
+  });
+}
+
+async function assignGroupTask() {
+  const title = document.getElementById('gt-title').value.trim();
+  const description = document.getElementById('gt-desc').value.trim();
+  const scenarioId = document.getElementById('gt-scenario').value.trim();
+  const deadline = document.getElementById('gt-deadline').value;
+  const groupIds = Array.from(document.querySelectorAll('#gt-groups input:checked')).map(cb => cb.value);
+  if (!title) { showToast('请输入任务标题', true); return; }
+  if (groupIds.length === 0) { showToast('请至少选择一个分组', true); return; }
+  try {
+    await API.post('/api/manage/group-tasks', { class_id: _currentClassId, group_ids: groupIds, title, scenario_id: scenarioId, deadline, description });
+    showToast('组任务分发成功');
+    closeModal();
+    loadGroupTasks();
+  } catch (e) { console.error(e); showToast(e.message || '分发失败', true); }
+}
+
+// --- 进度监控 ---
+async function loadProgress() {
+  const classId = document.getElementById('progress-class-select')?.value || _currentClassId;
+  if (!classId) return;
+  _currentClassId = classId;
+  try {
+    const data = await API.get('/api/manage/progress/' + classId);
+    const students = data.students_progress || [];
+    if (students.length === 0) {
+      document.getElementById('progress-dashboard').innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;"><div style="font-size:28px;">📊</div><div style="font-size:13px;">该班级暂无学生</div></div>';
+      return;
+    }
+    const avgPct = students.reduce((sum, s) => sum + (s.progress_pct || 0), 0) / students.length;
+    document.getElementById('stat-progress').textContent = Math.round(avgPct) + '%';
+    document.getElementById('progress-dashboard').innerHTML = `
+      <div style="margin-bottom:16px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
+        <div style="padding:16px; background:#f0fdf4; border-radius:10px; border:1px solid #bbf7d0; text-align:center;">
+          <div style="font-size:22px; font-weight:700; color:#15803d;">${data.total_students}</div><div style="font-size:12px; color:#64748b;">总学生数</div></div>
+        <div style="padding:16px; background:#f0f9ff; border-radius:10px; border:1px solid #bae6fd; text-align:center;">
+          <div style="font-size:22px; font-weight:700; color:#0369a1;">${data.total_groups}</div><div style="font-size:12px; color:#64748b;">分组数</div></div>
+        <div style="padding:16px; background:#fefce8; border-radius:10px; border:1px solid #fde68a; text-align:center;">
+          <div style="font-size:22px; font-weight:700; color:#a16207;">${Math.round(avgPct)}%</div><div style="font-size:12px; color:#64748b;">平均完成率</div></div>
+      </div>
+      <table class="data-table"><thead><tr><th>学生</th><th>ID</th><th>总任务</th><th>已完成</th><th>完成率</th><th>平均分</th></tr></thead>
+      <tbody>${students.map(s => {
+        const pct = s.progress_pct || 0;
+        const color = pct === 100 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#ef4444';
+        return `<tr><td>${s.avatar||''} ${s.name||s.student_id}</td><td style="font-size:12px; color:#94a3b8;">${s.student_id}</td><td>${s.total_tasks}</td><td>${s.completed}</td><td><span style="font-weight:600; color:${color};">${pct}%</span></td><td>${s.avg_score !== null ? s.avg_score : '--'}</td></tr>`;
+      }).join('')}</tbody></table>`;
+  } catch (e) { console.error(e); }
+}
+
+// --- 未完成提醒 ---
+async function loadUnfinished() {
+  try {
+    const data = await API.get('/api/manage/unfinished/' + _currentClassId);
+    const list = data.unfinished || [];
+    const el = document.getElementById('unfinished-list');
+    if (list.length === 0) {
+      el.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;"><div style="font-size:40px; margin-bottom:8px;">✅</div><div style="font-size:15px; font-weight:600; color:#10b981;">所有学生都已完成任务！</div></div>';
+      return;
+    }
+    el.innerHTML = `
+      <div style="padding:16px; border-radius:12px; background:#fef2f2; border:1px solid #fecaca; margin-bottom:16px;">
+        <span style="font-size:14px; font-weight:700; color:#dc2626;">⚠️ 共 ${list.length} 条未完成记录</span>
+      </div>
+      <table class="data-table"><thead><tr><th>学生</th><th>ID</th><th>角色</th><th>任务</th><th>分组</th><th>原因</th><th>截止时间</th></tr></thead>
+      <tbody>${list.map(u => `
+        <tr>
+          <td>${u.avatar||''} ${u.name}</td>
+          <td style="font-size:12px; color:#94a3b8;">${u.student_id}</td>
+          <td>${u.is_leader ? '👑 组长' : '👤 组员'}</td>
+          <td style="font-size:13px;">${u.task_title}</td>
+          <td style="font-size:12px;">${u.group_name || '-'}</td>
+          <td><span style="font-size:12px; padding:2px 8px; border-radius:4px; background:#fee2e2; color:#dc2626;">${u.reason}</span></td>
+          <td style="font-size:12px; color:#94a3b8;">${u.deadline || '无'}</td>
+        </tr>`).join('')}</tbody></table>`;
+  } catch (e) { console.error(e); }
+}
+
+// ===========================================================
+// ====== 学生功能 ======
+// ===========================================================
+
+async function loadMyGroup() {
+  try {
+    const data = await API.get('/api/manage/classes/CLS-202601/groups');
+    const groups = data.groups || [];
+    const ungrouped = data.ungrouped || [];
+    const myGroup = groups.find(g => g.members.some(m => m.student_id === _studentId));
+    const el = document.getElementById('my-group-panel');
+    if (myGroup) {
+      const isLeader = myGroup.leader === _studentId;
+      el.innerHTML = `
+        <div style="padding:24px; border-radius:14px; background:linear-gradient(135deg, #ecfeff, #fff); border:1px solid #a5f3fc; margin-bottom:20px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+              <div style="font-size:18px; font-weight:700; color:#0c4a6e;">${myGroup.name}</div>
+              <div style="font-size:12px; color:#64748b; margin-top:2px;">${myGroup.self_organized ? '🧑‍🤝‍🧑 学生自组' : '👨‍🏫 教师创建'} · ${myGroup.members.length}人</div>
+            </div>
+            ${isLeader ? '<span style="font-size:12px; padding:4px 12px; border-radius:6px; background:#dbeafe; color:#1e40af; font-weight:600;">👑 我是组长</span>' : ''}
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;">
+            ${myGroup.members.map(m => `
+              <div style="display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:20px; ${m.student_id===myGroup.leader?'background:#dbeafe; border:1px solid #93c5fd;':'background:#f0f9ff; border:1px solid #bae6fd;'}">
+                <span style="font-size:16px;">${m.avatar}</span>
+                <span style="font-size:13px; font-weight:600; color:#1e293b;">${m.name}</span>
+                ${m.student_id===myGroup.leader?'<span style="font-size:11px;">👑</span>':''}
+                ${m.student_id===_studentId?'<span style="font-size:10px; color:#0891b2; font-weight:600;">（我）</span>':''}
+              </div>`).join('')}
+          </div>
+          <div style="display:flex; gap:8px;">
+            ${!isLeader ? `<button onclick="leaveMyGroup('${myGroup.group_id}')" style="padding:8px 16px; border:1px solid #fecaca; border-radius:8px; font-size:13px; color:#dc2626; cursor:pointer; background:#fff;">退出分组</button>` : ''}
+            ${isLeader ? `<button onclick="leaveMyGroup('${myGroup.group_id}')" style="padding:8px 16px; border:1px solid #fecaca; border-radius:8px; font-size:13px; color:#dc2626; cursor:pointer; background:#fff;">解散分组（退出）</button>` : ''}
+          </div>
+        </div>
+        <div style="font-size:13px; color:#64748b; margin-bottom:8px;">📋 其他分组（不可加入）</div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:12px;">
+          ${groups.filter(g => g.group_id !== myGroup.group_id).map(g => `
+            <div style="padding:14px; border-radius:10px; background:#f8fafc; border:1px solid #e2e8f0;">
+              <div style="font-size:13px; font-weight:600; color:#475569; margin-bottom:6px;">${g.name} (${g.members.length}人)</div>
+              <div style="font-size:11px; color:#94a3b8;">${g.members.map(m=>m.name).join('、')}</div>
+            </div>`).join('') || '<div style="font-size:12px; color:#94a3b8;">暂无其他分组</div>'}
+        </div>`;
+    } else {
+      // 未分组，可以创建或加入
+      const joinableGroups = groups.filter(g => g.members.length < 5);
+      el.innerHTML = `
+        <div style="padding:24px; border-radius:14px; background:#fffbeb; border:1px dashed #fcd34d; margin-bottom:20px;">
+          <div style="font-size:16px; font-weight:700; color:#92400e; margin-bottom:8px;">📌 你还未加入任何分组</div>
+          <p style="font-size:13px; color:#78716c; margin:0 0 16px 0;">每组 4-5 人，你可以创建新分组并邀请同学，或加入已有的分组。</p>
+          <button onclick="showSelfCreateModal()" style="padding:10px 20px; border:none; border-radius:8px; background:#06b6d4; color:#fff; font-size:14px; font-weight:600; cursor:pointer;">➕ 创建新分组</button>
+        </div>
+        ${joinableGroups.length > 0 ? `
+          <div style="font-size:13px; color:#64748b; margin-bottom:8px;">👥 可加入的分组（不足5人）</div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:12px;">
+            ${joinableGroups.map(g => `
+              <div style="padding:16px; border-radius:10px; background:#fff; border:1px solid #e5e7eb;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <span style="font-size:14px; font-weight:600; color:#1e293b;">${g.name}</span>
+                  <span style="font-size:11px; padding:2px 8px; border-radius:4px; background:#d1fae5; color:#059669; font-weight:600;">${g.members.length}/5人</span>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:12px;">
+                  ${g.members.map(m => `<span style="font-size:11px; padding:3px 8px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:12px;">${m.avatar} ${m.name}${m.student_id===g.leader?' 👑':''}</span>`).join('')}
+                </div>
+                <button onclick="joinGroup('${g.group_id}')" style="width:100%; padding:8px; border:none; border-radius:8px; background:#10b981; color:#fff; font-size:13px; font-weight:600; cursor:pointer;">加入分组</button>
+              </div>`).join('')}
+          </div>` : '<div style="font-size:13px; color:#94a3b8; padding:20px;">暂无可加入的分组，请新建分组</div>'}
+      `;
+    }
+  } catch (e) { console.error(e); showToast('加载分组失败', true); }
+}
+
+function showSelfCreateModal() {
+  const body = `
+    <h3 style="margin-bottom:20px;">创建新分组</h3>
+    <div style="margin-bottom:16px; padding:12px; background:#ecfeff; border-radius:8px; border:1px solid #a5f3fc;">
+      <div style="font-size:13px; color:#0c4a6e; font-weight:600; margin-bottom:4px;">💡 你将自动成为组长</div>
+      <div style="font-size:12px; color:#64748b;">每组 4-5 人，创建后可邀请同学加入</div>
+    </div>
+    <div class="form-group"><label class="form-label">分组名称</label>
+      <input type="text" class="form-control" id="sc-name" placeholder="如：闪电行动组" style="width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:8px;"></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="selfCreateGroup()">创建分组</button></div>`;
+  showModal(body);
+}
+
+async function selfCreateGroup() {
+  const name = document.getElementById('sc-name').value.trim();
+  if (!name) { showToast('请输入分组名称', true); return; }
+  try {
+    await API.post('/api/manage/groups/self-create', { class_id: 'CLS-202601', student_id: _studentId, group_name: name });
+    showToast('分组创建成功！你已成为组长');
+    closeModal();
+    loadMyGroup();
+  } catch (e) { console.error(e); showToast(e.message || '创建失败', true); }
+}
+
+async function joinGroup(groupId) {
+  try {
+    await API.post('/api/manage/groups/' + groupId + '/join', { class_id: 'CLS-202601', student_id: _studentId });
+    showToast('加入成功！');
+    loadMyGroup();
+  } catch (e) { console.error(e); showToast(e.message || '加入失败', true); }
+}
+
+async function leaveMyGroup(groupId) {
+  if (!confirm('确定退出当前分组？')) return;
+  try {
+    await API.post('/api/manage/groups/' + groupId + '/leave', { class_id: 'CLS-202601', student_id: _studentId });
+    showToast('已退出分组');
+    loadMyGroup();
+  } catch (e) { console.error(e); showToast('退出失败', true); }
+}
+
+// --- 我的任务（学生） ---
+async function loadMyTasks() {
+  try {
+    const data = await API.get('/api/manage/group-tasks/my/' + _studentId);
+    const tasks = data.tasks || [];
+    const el = document.getElementById('my-task-list');
+    if (tasks.length === 0) {
+      el.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;"><div style="font-size:28px;">📋</div><div style="font-size:13px;">暂无分配给你的任务</div></div>';
+      return;
+    }
+    el.innerHTML = tasks.map(t => {
+      const statusColors = { published: '#94a3b8', leader_accepted: '#f59e0b', in_progress: '#3b82f6', completed: '#10b981' };
+      const statusLabels = { published: '待组长确认', leader_accepted: '组长已确认，待组员确认', in_progress: '进行中', completed: '已完成' };
+      const sc = statusColors[t.status] || '#94a3b8';
+      const sl = statusLabels[t.status] || t.status;
+      const canConfirm = t.is_leader ? !t.leader_confirmed : (t.leader_confirmed && !t.my_confirmed);
+      const confirmBtn = canConfirm ? `
+        <button onclick="confirmTask('${t.gtask_id}','${t.group_id}')" style="padding:10px 20px; border:none; border-radius:8px; background:#10b981; color:#fff; font-size:14px; font-weight:600; cursor:pointer; margin-top:8px;">
+          ${t.is_leader ? '✓ 确认接受任务' : '✓ 确认接受任务'}
+        </button>` : (t.my_confirmed ? '<span style="display:inline-block; padding:8px 16px; border-radius:8px; background:#d1fae5; color:#059669; font-size:13px; font-weight:600; margin-top:8px;">✓ 你已确认</span>' : '');
+
+      // 确认流程提示
+      let flowHint = '';
+      if (t.is_leader && !t.leader_confirmed) {
+        flowHint = `<div style="padding:10px 14px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; margin-bottom:12px;"><span style="font-size:12px; color:#92400e;">⏳ 请你作为组长先确认接受任务，确认后组员才能确认</span></div>`;
+      } else if (!t.is_leader && !t.leader_confirmed) {
+        flowHint = `<div style="padding:10px 14px; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; margin-bottom:12px;"><span style="font-size:12px; color:#dc2626;">⏳ 组长（${t.leader_name}）尚未确认接受任务，请等待组长确认后再确认</span></div>`;
+      } else if (t.leader_confirmed && !t.my_confirmed) {
+        flowHint = `<div style="padding:10px 14px; background:#dbeafe; border:1px solid #93c5fd; border-radius:8px; margin-bottom:12px;"><span style="font-size:12px; color:#1e40af;">✅ 组长已确认，请你确认接受任务</span></div>`;
+      }
+
+      return `
+        <div style="padding:20px; border-radius:12px; background:#fff; border:1px solid #e5e7eb;">
+          <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">
+            <div>
+              <div style="font-size:16px; font-weight:700; color:#1e293b;">${t.title}</div>
+              <div style="font-size:12px; color:#64748b; margin-top:2px;">${t.scenario_id || '通用场景'} · 分组：${t.group_name} · 截止：${t.deadline || '无限制'}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:end; gap:4px;">
+              <span style="font-size:11px; padding:4px 10px; border-radius:6px; background:${sc}22; color:${sc}; font-weight:600;">${sl}</span>
+              ${t.is_leader ? '<span style="font-size:10px; padding:2px 6px; border-radius:4px; background:#dbeafe; color:#1e40af;">👑 组长</span>' : ''}
+            </div>
+          </div>
+          ${t.description ? `<div style="font-size:13px; color:#475569; margin-bottom:12px;">${t.description}</div>` : ''}
+          ${flowHint}
+          <div style="padding:12px; background:#f8fafc; border-radius:8px; margin-bottom:8px;">
+            <div style="font-size:12px; color:#64748b; margin-bottom:8px;">📋 确认进度</div>
+            <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+              <span style="font-size:12px; ${t.leader_confirmed?'color:#10b981;':'color:#ef4444;'}">${t.leader_confirmed?'✓':'○'}</span>
+              <span style="font-size:12px; color:#475569;">组长（${t.leader_name}）确认接受</span>
+            </div>
+            ${t.members.map(m => `
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                <span style="font-size:12px; ${m.confirmed?'color:#10b981;':'color:#ef4444;'}">${m.confirmed?'✓':'○'}</span>
+                <span style="font-size:12px; color:#475569;">${m.avatar} ${m.name}${m.student_id===_studentId?' （我）':''}</span>
+              </div>`).join('')}
+          </div>
+          <div style="padding:12px; background:#f0fdf4; border-radius:8px; margin-bottom:8px;">
+            <div style="font-size:12px; color:#64748b; margin-bottom:8px;">⚡ 决策推演完成情况</div>
+            ${t.members.map(m => `
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px;">
+                <span style="font-size:12px; ${m.decision_completed?'color:#10b981;':'color:#d1d5db;'}">${m.decision_completed?'✓':'○'}</span>
+                <span style="font-size:12px; color:#475569;">${m.avatar} ${m.name}${m.student_id===_studentId?' （我）':''}</span>
+                ${m.score !== null ? `<span style="font-size:11px; color:#64748b; margin-left:4px;">（得分: ${m.score}）</span>` : ''}
+              </div>`).join('')}
+          </div>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            ${confirmBtn}
+            ${t.scenario_id ? `<a href="/decision?scenario=${t.scenario_id}&gtask_id=${t.gtask_id}" target="_blank" style="padding:8px 16px; border:1px solid #06b6d4; border-radius:8px; font-size:13px; color:#06b6d4; text-decoration:none; display:inline-flex; align-items:center;">前往完成 →</a>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) { console.error(e); showToast('加载任务失败', true); }
+}
+
+async function confirmTask(gtaskId, groupId) {
+  const endpoint = _studentId ? null : null;
+  try {
+    // 判断是组长还是组员确认
+    const myData = await API.get('/api/manage/group-tasks/my/' + _studentId);
+    const task = (myData.tasks || []).find(t => t.gtask_id === gtaskId);
+    if (!task) { showToast('任务不存在', true); return; }
+    const url = task.is_leader
+      ? '/api/manage/group-tasks/' + gtaskId + '/leader-confirm'
+      : '/api/manage/group-tasks/' + gtaskId + '/member-confirm';
+    await API.post(url, { group_id: groupId, student_id: _studentId });
+    showToast('确认成功！');
+    loadMyTasks();
+  } catch (e) { console.error(e); showToast(e.message || '确认失败', true); }
+}
+
+// ====== 小组完成情况（学生）======
+async function loadGroupStatus() {
+  try {
+    const data = await API.get('/api/manage/group-tasks/my/' + _studentId);
+    const tasks = data.tasks || [];
+    const el = document.getElementById('group-status-panel');
+    if (tasks.length === 0) {
+      el.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8;"><div style="font-size:28px;">📊</div><div style="font-size:13px;">暂无小组任务</div></div>';
+      return;
+    }
+    el.innerHTML = tasks.map(t => {
+      const statusColors = { published: '#94a3b8', leader_accepted: '#f59e0b', in_progress: '#3b82f6', completed: '#10b981' };
+      const statusLabels = { published: '待确认', leader_accepted: '确认中', in_progress: '进行中', completed: '已完成' };
+      const sc = statusColors[t.status] || '#94a3b8';
+      const sl = statusLabels[t.status] || t.status;
+
+      // 确认进度
+      const totalMembers = (t.members || []).length;
+      const confirmedCount = (t.members || []).filter(m => m.confirmed).length;
+      const confirmPct = totalMembers > 0 ? Math.round((confirmedCount / totalMembers) * 100) : 0;
+
+      // 是否过了截止时间
+      let deadlineWarn = '';
+      if (t.deadline) {
+        const now = new Date();
+        const dl = new Date(t.deadline.replace(' ', 'T'));
+        if (now > dl && t.status !== 'completed') {
+          deadlineWarn = '<span style="font-size:11px; padding:2px 8px; border-radius:4px; background:#fee2e2; color:#dc2626; font-weight:600;">已超时</span>';
+        }
+      }
+
+      return `
+        <div style="padding:20px; border-radius:12px; background:#fff; border:1px solid #e5e7eb; margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:16px;">
+            <div>
+              <div style="font-size:16px; font-weight:700; color:#1e293b;">${t.title}</div>
+              <div style="font-size:12px; color:#64748b; margin-top:4px;">
+                ${t.scenario_id || '通用场景'} · 分组：${t.group_name} · 截止：${t.deadline || '无限制'} ${deadlineWarn}
+              </div>
+            </div>
+            <span style="font-size:11px; padding:4px 10px; border-radius:6px; background:${sc}22; color:${sc}; font-weight:600;">${sl}</span>
+          </div>
+
+          <!-- 确认进度条 -->
+          <div style="margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+              <span style="font-size:12px; font-weight:600; color:#475569;">📋 任务确认进度</span>
+              <span style="font-size:12px; color:#64748b;">${confirmedCount}/${totalMembers} 已确认 (${confirmPct}%)</span>
+            </div>
+            <div style="height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden;">
+              <div style="height:100%; width:${confirmPct}%; background:${confirmPct===100?'#10b981':'#06b6d4'}; border-radius:4px; transition:width 0.5s;"></div>
+            </div>
+          </div>
+
+          <!-- 成员状态列表 -->
+          <div style="padding:12px 16px; background:#f8fafc; border-radius:10px;">
+            <div style="font-size:12px; font-weight:600; color:#475569; margin-bottom:10px;">👥 组员完成情况</div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:8px;">
+              ${t.members.map(m => {
+                const isLeader = false; // Will be set below
+                const isMe = m.student_id === _studentId;
+                const confirmed = m.confirmed;
+                const memberColor = confirmed ? '#10b981' : '#94a3b8';
+                const bgColor = confirmed ? '#ecfdf5' : '#f8fafc';
+                const borderColor = confirmed ? '#a7f3d0' : '#e2e8f0';
+                return `
+                  <div style="display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; background:${bgColor}; border:1px solid ${borderColor};">
+                    <div style="width:32px; height:32px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:16px;">${m.avatar}</div>
+                    <div style="flex:1; min-width:0;">
+                      <div style="font-size:13px; font-weight:600; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${m.name}${isMe ? '（我）' : ''}
+                      </div>
+                      <div style="font-size:11px; color:${memberColor};">
+                        ${confirmed ? '✓ 已确认' : '○ 待确认'}
+                      </div>
+                    </div>
+                    <span style="font-size:16px;">${confirmed ? '✅' : '⏳'}</span>
+                  </div>`;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- 组长确认状态 -->
+          <div style="margin-top:12px; padding:10px 14px; border-radius:8px; ${t.leader_confirmed ? 'background:#ecfdf5; border:1px solid #a7f3d0;' : 'background:#fffbeb; border:1px solid #fde68a;'}">
+            <div style="font-size:12px; ${t.leader_confirmed ? 'color:#059669;' : 'color:#92400e;'}">
+              ${t.leader_confirmed ? '✅' : '⏳'} 组长（${t.leader_name}）${t.leader_confirmed ? '已确认接受任务' : '尚未确认接受任务'}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  } catch (e) { console.error(e); showToast('加载小组完成情况失败', true); }
+}
+
+// ====== 初始化 ======
+if (_isTeacher) {
+  loadClasses();
+} else {
+  loadMyGroup();
+}
+</script>
+{% endblock %}

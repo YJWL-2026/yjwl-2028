@@ -5,10 +5,11 @@
 <div class="topbar">
   <h2>学生决策 <span class="text-sm text-muted">（学）</span></h2>
   <div class="actions">
-    <select class="form-control" id="scenario-select" style="width: 300px;" onchange="loadScenarioData()">
+    <select class="form-control" id="scenario-select" style="width: 300px;">
       <option value="">-- 选择场景 --</option>
     </select>
-    <button class="btn btn-primary" id="start-btn" onclick="startDecision()">开始决策</button>
+    <button class="btn btn-outline" id="confirm-scenario-btn" onclick="confirmScenario()" disabled>确认场景</button>
+    <button class="btn btn-primary" id="start-btn" onclick="startDecisionWithSwitch()" disabled>开始决策</button>
   </div>
 </div>
 
@@ -121,6 +122,40 @@
       </div>
     </div>
 
+    <!-- 策略四: 救灾决策模式提示 -->
+    <div id="relief-info-section" style="display:none;">
+      <div class="card" style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 1px solid #10b981;">
+        <div class="card-header" style="border-color: #10b981;">
+          <h3 style="color: #065f46;">🚑 救灾物资运输任务</h3>
+        </div>
+        <div style="padding: 12px 0;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div style="padding: 16px; background: white; border-radius: 10px; border: 1px solid #a7f3d0;">
+              <div style="font-weight: 700; color: #065f46; margin-bottom: 8px;">🛡️ 安全维度（50%）</div>
+              <ul style="font-size: 13px; color: #475569; margin: 0; padding-left: 18px; line-height: 1.8;">
+                <li>路线安全评估 — 地质灾害风险、道路状况</li>
+                <li>货物固定与防护 — 救灾物资装卸、防潮防震</li>
+                <li>运输工具状态 — 车辆/无人机安全检查</li>
+                <li>人员资质与配置 — 应急培训记录、持证情况</li>
+              </ul>
+            </div>
+            <div style="padding: 16px; background: white; border-radius: 10px; border: 1px solid #a7f3d0;">
+              <div style="font-weight: 700; color: #065f46; margin-bottom: 8px;">⚡ 速度维度（50%）</div>
+              <ul style="font-size: 13px; color: #475569; margin: 0; padding-left: 18px; line-height: 1.8;">
+                <li>响应时效 — 从接令到出库装车的时间</li>
+                <li>路线优化 — 最短/最安全路径规划能力</li>
+                <li>中转效率 — 中转站货物分拨效率</li>
+                <li>末端送达速度 — 最后一段配送时效</li>
+              </ul>
+            </div>
+          </div>
+          <p style="margin-top: 12px; font-size: 13px; color: #065f46; font-weight: 600;">
+            ⚠️ 本次任务考核安全与速度双重维度，请合理调度运输资源（含无人机空投），保障救灾物资安全快速送达。
+          </p>
+        </div>
+      </div>
+    </div>
+
     <div class="flex-between mt-2">
       <button class="btn btn-outline" onclick="modifyPlan()">📝 修改方案（记录行为）</button>
       <button class="btn btn-success" id="submit-btn" onclick="submitPlan()">提交方案</button>
@@ -174,6 +209,16 @@
     </div>
     <div id="comment-display" style="white-space: pre-wrap; font-size: 14px; line-height: 2;"></div>
   </div>
+
+  <!-- 救灾决策考核结果 -->
+  <div id="relief-assessment-section" style="display:none;">
+    <div class="card" style="border: 2px solid #10b981;">
+      <div class="card-header" style="border-color: #10b981;">
+        <h3 style="color: #065f46;">🚑 救灾决策考核报告</h3>
+      </div>
+      <div id="relief-assessment-content"></div>
+    </div>
+  </div>
 </div>
 
 {% endblock %}
@@ -189,6 +234,8 @@ let mapInstance = null;
 let studentActions = [];
 let decisionStartTime = 0;
 let strategyContext = null;
+let gtaskId = null;  // 从组任务进入时携带的组任务ID
+const _studentId = '{{ current_user.username if current_user else "" }}';  // 当前登录学生ID
 
 // ===== 初始化 =====
 async function init() {
@@ -196,17 +243,89 @@ async function init() {
     const scenarios = await API.get('/api/scenarios');
     const select = document.getElementById('scenario-select');
     scenarios.forEach(s => {
-      select.innerHTML += `<option value="${s.scenario_id}">${s.scenario_name} (${getDisasterName(s.disaster_type)})</option>`;
+      select.innerHTML += `<option value="${s.scenario_id}">[${s.scenario_id}] ${s.scenario_name} (${getDisasterName(s.disaster_type)})</option>`;
+    });
+    
+    // 监听选择变化，启用确认按钮
+    select.addEventListener('change', function() {
+      const btn = document.getElementById('confirm-scenario-btn');
+      const startBtn = document.getElementById('start-btn');
+      btn.disabled = !this.value;
+      btn.textContent = '确认场景';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+      startBtn.disabled = !this.value;
+      startBtn.textContent = '开始决策';
+      startBtn.style.display = ''; // 恢复按钮显示
+      // 重置页面状态：隐藏旧决策内容，回到步骤1
+      document.getElementById('alert-section').style.display = 'none';
+      document.getElementById('decision-section').style.display = 'none';
+      document.getElementById('comparison-section').style.display = 'none';
+      document.getElementById('result-section').style.display = 'none';
+      document.getElementById('relief-assessment-section').style.display = 'none';
+      updateSteps(1);
+      // 清除倒计时和地图实例
+      if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+      if (mapInstance) { mapInstance.remove(); mapInstance = null; }
+      scenarioData = null;
+      optimalPlan = null;
+      sessionId = null;
+      studentActions = [];
     });
     
     // 检查URL参数
     const params = new URLSearchParams(location.search);
+    gtaskId = params.get('gtask_id') || null; // 记录组任务ID
     if (params.get('scenario')) {
       select.value = params.get('scenario');
-      loadScenarioData();
+      document.getElementById('confirm-scenario-btn').disabled = false;
+      confirmScenario();
     }
   } catch (e) {
     handleError(e, '加载场景列表');
+  }
+}
+
+// ===== 一键确认并开始决策（切换场景时使用） =====
+async function startDecisionWithSwitch() {
+  const sid = document.getElementById('scenario-select').value;
+  if (!sid) { showToast('请先选择场景', true); return; }
+  // 如果当前场景数据不匹配，先加载
+  if (!scenarioData || scenarioData.scenario_id !== sid) {
+    const btn = document.getElementById('start-btn');
+    btn.disabled = true;
+    btn.textContent = '加载场景中...';
+    try {
+      scenarioData = await API.get('/api/scenarios/' + sid);
+      showToast('场景已加载: ' + scenarioData.scenario_name);
+    } catch (e) {
+      handleError(e, '加载场景');
+      btn.disabled = false;
+      btn.textContent = '开始决策';
+      return;
+    }
+  }
+  // 启动决策
+  await startDecision();
+}
+
+async function confirmScenario() {
+  const sid = document.getElementById('scenario-select').value;
+  if (!sid) return;
+  const btn = document.getElementById('confirm-scenario-btn');
+  btn.disabled = true;
+  btn.textContent = '加载中...';
+  try {
+    scenarioData = await API.get('/api/scenarios/' + sid);
+    document.getElementById('start-btn').disabled = false;
+    btn.textContent = '✓ 已确认';
+    btn.style.color = '#16a34a';
+    btn.style.borderColor = '#86efac';
+    showToast('场景已确认: ' + scenarioData.scenario_name);
+  } catch (e) {
+    handleError(e, '加载场景');
+    btn.disabled = false;
+    btn.textContent = '确认场景';
   }
 }
 
@@ -229,7 +348,7 @@ async function startDecision() {
   try {
     // 启动行为追踪会话
     const sess = await API.post('/api/session/start', {
-      student_id: 'STU-001',
+      student_id: _studentId,
       scenario_id: scenarioData.scenario_id,
     });
     sessionId = sess.session_id;
@@ -310,7 +429,14 @@ function showAlert() {
   const body = document.getElementById('alert-body');
   
   card.className = 'alert-card alert-' + type;
-  icon.textContent = type === 'earthquake' ? '🌋' : type === 'rainstorm' ? '🌧️' : type === 'typhoon' ? '🌀' : '⚠️';
+  
+  // 灾害类型图标映射
+  const icons = {
+    earthquake: '🌋', rainstorm: '🌧️', typhoon: '🌀',
+    landslide: '⛰️', mudslide: '🏔️', flood: '🌊',
+    snowstorm: '❄️', sandstorm: '🌪️', wildfire: '🔥', tsunami: '🌊'
+  };
+  icon.textContent = icons[type] || '⚠️';
   title.textContent = getDisasterName(type) + '预警';
   
   let html = '';
@@ -339,13 +465,56 @@ function showAlert() {
       <div><span class="label">预计登陆：</span>${tf.landing_location}（${tf.landing_time}）</div>
       <div><span class="label">港口关闭：</span>${tf.port_closure ? '是' : '否'} | <span class="label" style="width:auto">机场关闭：</span>${tf.airport_closure ? '是' : '否'}</div>
     `;
+  } else if (d.landslide) {
+    const ls = d.landslide;
+    html = `
+      <div><span class="label">滑坡位置：</span>${ls.location_city}（北纬${ls.location_lat.toFixed(4)}°，东经${ls.location_lng.toFixed(4)}°）</div>
+      <div><span class="label">灾害等级：</span>${ls.scale_level} 级</div>
+      <div><span class="label">阻断道路数：</span>${(ls.blocked_roads||[]).length} 条</div>
+      <div><span class="label">预计通行时间：</span>${ls.estimated_clear_hours} 小时</div>
+      <div><span class="label">预计影响范围：</span>${(ls.affected_areas||[]).join('、')}</div>
+    `;
+  } else if (d.snowstorm) {
+    const ss = d.snowstorm;
+    html = `
+      <div><span class="label">暴雪中心：</span>${ss.center_city}</div>
+      <div><span class="label">降雪量：</span>${ss.snowfall_cm} cm</div>
+      <div><span class="label">最低气温：</span>${ss.temperature_min}°C</div>
+      <div><span class="label">预计持续：</span>${ss.affected_duration_hours} 小时</div>
+      <div><span class="label">预计影响范围：</span>${(ss.affected_areas||[]).join('、')}</div>
+    `;
+  } else if (d.sandstorm) {
+    const st = d.sandstorm;
+    html = `
+      <div><span class="label">沙尘暴中心：</span>${st.center_city}</div>
+      <div><span class="label">风力等级：</span>${st.wind_force_level} 级</div>
+      <div><span class="label">能见度：</span>${st.visibility_m} 米</div>
+      <div><span class="label">预计持续：</span>${st.affected_duration_hours} 小时</div>
+      <div><span class="label">预计影响范围：</span>${(st.affected_areas||[]).join('、')}</div>
+    `;
+  } else if (d.wildfire) {
+    const wf = d.wildfire;
+    html = `
+      <div><span class="label">火灾中心：</span>${wf.center_city}</div>
+      <div><span class="label">火灾等级：</span>${wf.fire_level} 级</div>
+      <div><span class="label">过火面积：</span>${wf.burned_area_ha} 公顷</div>
+      <div><span class="label">预计影响范围：</span>${(wf.affected_areas||[]).join('、')}</div>
+    `;
+  } else if (d.tsunami) {
+    const tn = d.tsunami;
+    html = `
+      <div><span class="label">海啸中心：</span>${tn.center_city}</div>
+      <div><span class="label">预计浪高：</span>${tn.wave_height_m} 米</div>
+      <div><span class="label">预警等级：</span>${tn.warning_level === 'red' ? '🔴 红色' : '⚠️ 橙色'}</div>
+      <div><span class="label">预计影响范围：</span>${(tn.affected_areas||[]).join('、')}</div>
+    `;
   }
   body.innerHTML = html;
   
   // 显示影响分析
   document.getElementById('impact-info').innerHTML = `
     <div class="card-header"><h3>灾害影响分析</h3></div>
-    <p style="font-size: 14px; line-height: 2;">${optimalPlan.impact_summary}</p>
+    <p style="font-size: 14px; line-height: 2;">${optimalPlan.impact_summary || '正在分析中...'}</p>
   `;
 }
 
@@ -427,10 +596,18 @@ function initMap(mapData) {
 
 // ===== 受影响货物列表 =====
 function showCargoList() {
+  const mode = scenarioData.strategy_config?.mode || 'time_pressure';
   const cargos = scenarioData.cargo_manifest || [];
-  const actions = optimalPlan.actions || [];
-  const affectedCargoIds = new Set();
-  actions.forEach(a => a.cargo_ids?.forEach(id => affectedCargoIds.add(id)));
+  
+  let affectedCargoIds;
+  if (mode === 'emergency_relief') {
+    // 救灾模式: 显示全部救灾物资
+    affectedCargoIds = new Set(cargos.map(c => c.cargo_id));
+  } else {
+    const actions = optimalPlan.actions || [];
+    affectedCargoIds = new Set();
+    actions.forEach(a => a.cargo_ids?.forEach(id => affectedCargoIds.add(id)));
+  }
   
   const list = document.getElementById('cargo-list');
   document.getElementById('cargo-count').textContent = affectedCargoIds.size + '单';
@@ -448,13 +625,18 @@ function showCargoList() {
       </div>
       <div class="text-sm text-muted">${c.description || c.cargo_type}</div>
       <div class="text-sm">重量: ${c.weight_tons}t | 体积: ${c.volume_m3}m³ | 价值: ¥${formatNum(c.value_yuan)}</div>
-      <div class="text-sm">目的地: ${c.destination_name || 'N/A'}</div>
+      <div class="text-sm">始发地: ${c.source_name || c.origin_name || c.origin || '--'} → 目的地: ${c.destination_name || c.destination || 'N/A'}</div>
     </div>
   `).join('');
 }
 
 // ===== 方案选择面板 =====
 function showPlanPanel() {
+  const mode = scenarioData.strategy_config?.mode || 'time_pressure';
+  if (mode === 'emergency_relief') {
+    showReliefPlanPanel();
+    return;
+  }
   const cargos = scenarioData.cargo_manifest || [];
   const actions = optimalPlan.actions || [];
   const affectedCargoIds = new Set();
@@ -468,12 +650,20 @@ function showPlanPanel() {
   panel.innerHTML = affectedCargos.map((c, i) => {
     const vehicles = scenarioData.vehicle_fleet || [];
     const warehouses = scenarioData.warehouses || [];
+    // 无人机编队选项（来自企业数据）
+    const drones = [
+      {id: 'DRONE-FC30', name: '大疆FlyCart 30', payload: 30, range: 28},
+      {id: 'DRONE-M5', name: '丰翼方舟M5', payload: 50, range: 20},
+      {id: 'DRONE-XDA100', name: '自研XDA-100', payload: 100, range: 50},
+    ];
+    const canUseDrone = true; // 无人机无重量上限，均可空投
     return `
     <div class="form-group" style="padding: 16px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 12px;">
       <div class="flex-between mb-1">
         <div>
           <span class="font-bold">${c.cargo_id}</span>
           <span class="tag ${c.priority_level === 'P1' ? 'tag-red' : c.priority_level === 'P2' ? 'tag-orange' : 'tag-gray'} ml-1">${c.priority_level}</span>
+          ${canUseDrone ? '<span class="tag tag-purple ml-1" style="font-size:10px;">🚁可空投</span>' : ''}
         </div>
         <span class="text-sm text-muted">${c.description || c.cargo_type} | ${c.weight_tons}t | ¥${formatNum(c.value_yuan)}</span>
       </div>
@@ -486,12 +676,25 @@ function showPlanPanel() {
             ${c.priority_level === 'P3' ? '<option value="abandon">放弃配送</option>' : ''}
           </select>
         </div>
+        <div id="transport-mode-select-${i}">
+          <label class="form-label">运输方式</label>
+          <select class="form-control" id="transport-mode-${i}" onchange="onTransportModeChange(${i})">
+            <option value="truck">🚛 卡车运输</option>
+            <option value="drone" ${!canUseDrone ? 'disabled' : ''}>🚁 无人机运输${!canUseDrone ? ' (超重)' : ''}</option>
+          </select>
+        </div>
         <div id="vehicle-select-${i}">
           <label class="form-label">指派车辆</label>
           <select class="form-control" id="vehicle-${i}">
             ${vehicles.filter(v => v.status === 'idle' || v.status === 'in_transit').map(v => 
               `<option value="${v.vehicle_id}">${v.license_plate} (${v.capacity_tons}t)</option>`
             ).join('')}
+          </select>
+        </div>
+        <div id="drone-select-${i}" style="display:none;">
+          <label class="form-label">指派无人机</label>
+          <select class="form-control" id="drone-${i}">
+            ${drones.map(d => `<option value="${d.id}">${d.name} (载${d.payload}kg/航程${d.range}km)</option>`).join('')}
           </select>
         </div>
         <div id="warehouse-select-${i}" style="display:none;">
@@ -508,8 +711,113 @@ function showPlanPanel() {
 
 function onActionChange(index) {
   const type = document.getElementById('action-type-' + index).value;
-  document.getElementById('vehicle-select-' + index).style.display = type === 'reroute' ? '' : 'none';
+  const showReroute = type === 'reroute';
+  document.getElementById('transport-mode-select-' + index).style.display = showReroute ? '' : 'none';
+  document.getElementById('vehicle-select-' + index).style.display = showReroute ? '' : 'none';
+  document.getElementById('drone-select-' + index).style.display = 'none';
   document.getElementById('warehouse-select-' + index).style.display = type === 'warehouse_transfer' ? '' : 'none';
+}
+
+function onTransportModeChange(index) {
+  const mode = document.getElementById('transport-mode-' + index).value;
+  document.getElementById('vehicle-select-' + index).style.display = mode === 'truck' ? '' : 'none';
+  document.getElementById('drone-select-' + index).style.display = mode === 'drone' ? '' : 'none';
+}
+
+// ===== 救灾决策面板 (策略四专用) =====
+function showReliefPlanPanel() {
+  const cargos = scenarioData.cargo_manifest || [];
+  const vehicles = scenarioData.vehicle_fleet || [];
+  const drones = [
+    {id: 'DRONE-FC30', name: '大疆FlyCart 30', payload: 30, range: 28},
+    {id: 'DRONE-M5', name: '丰翼方舟M5', payload: 50, range: 20},
+    {id: 'DRONE-XDA100', name: '自研XDA-100', payload: 100, range: 50},
+  ];
+
+  studentActions = [];
+  const panel = document.getElementById('plan-panel');
+
+  if (cargos.length === 0) {
+    panel.innerHTML = '<p class="text-muted text-center">暂无救灾物资数据</p>';
+    return;
+  }
+
+  panel.innerHTML = cargos.map((c, i) => {
+    const priorityLabel = c.priority_level === 'P1' ? '🚨紧急' : c.priority_level === 'P2' ? '⚠️重要' : '📋常规';
+    const priorityTag = c.priority_level === 'P1' ? 'tag-red' : c.priority_level === 'P2' ? 'tag-orange' : 'tag-gray';
+    return `
+    <div style="padding:16px; border:2px solid #10b981; border-radius:10px; margin-bottom:16px; background:#f0fdf4;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #a7f3d0;">
+        <div>
+          <span style="font-size:16px; font-weight:700; color:#065f46;">🚑 ${c.cargo_id}</span>
+          <span class="tag ${priorityTag} ml-1">${priorityLabel}</span>
+          <span class="tag tag-green ml-1" style="font-size:10px;">🚁可空投</span>
+        </div>
+        <span style="font-size:13px; color:#475569;">${c.description || c.cargo_type} | ${c.weight_tons}t | ¥${formatNum(c.value_yuan)}</span>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div>
+          <div class="form-group">
+            <label class="form-label" style="color:#065f46; font-weight:600;">🚛 运输方式</label>
+            <select class="form-control" id="relief-transport-${i}" onchange="onReliefTransportChange(${i})">
+              <option value="truck">🚛 卡车运输</option>
+              <option value="drone">🚁 无人机运输</option>
+            </select>
+          </div>
+          <div class="form-group" id="relief-vehicle-div-${i}">
+            <label class="form-label" style="color:#065f46; font-weight:600;">指派卡车</label>
+            <select class="form-control" id="relief-vehicle-${i}">
+              ${vehicles.filter(v => v.status === 'idle' || v.status === 'in_transit').map(v =>
+                `<option value="${v.vehicle_id}">${v.license_plate} (${v.capacity_tons}t)</option>`
+              ).join('')}
+            </select>
+          </div>
+          <div class="form-group" id="relief-drone-div-${i}" style="display:none;">
+            <label class="form-label" style="color:#065f46; font-weight:600;">指派无人机</label>
+            <select class="form-control" id="relief-drone-${i}">
+              ${drones.map(d => `<option value="${d.id}">${d.name} (载${d.payload}kg/航程${d.range}km)</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div>
+          <div class="form-group">
+            <label class="form-label" style="color:#065f46; font-weight:600;">🗺️ 路线选择</label>
+            <select class="form-control" id="relief-route-${i}">
+              <option value="safe">🛡️ 安全路线（避开地质灾害风险区，路程较长）</option>
+              <option value="fast">⚡ 快速路线（最短路径，但经过风险区域）</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="color:#065f46; font-weight:600;">🛡️ 安全措施（勾选已落实项）</label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:8px; background:white; border-radius:6px; border:1px solid #d1fae5;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#475569; cursor:pointer;">
+                <input type="checkbox" id="relief-safety-cargo-${i}" checked> 货物固定与防震
+              </label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#475569; cursor:pointer;">
+                <input type="checkbox" id="relief-safety-moisture-${i}" checked> 防潮防雨处理
+              </label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#475569; cursor:pointer;">
+                <input type="checkbox" id="relief-safety-vehicle-${i}" checked> 运输工具检查
+              </label>
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#475569; cursor:pointer;">
+                <input type="checkbox" id="relief-safety-driver-${i}" checked> 驾驶员资质确认
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:8px; padding:8px 12px; background:white; border-radius:6px; border:1px solid #d1fae5;">
+        <span style="font-size:13px; color:#475569;">📍 目的地: <b>${c.destination_name || c.destination_node || '灾区'}</b></span>
+      </div>
+    </div>
+    `;
+  }).join('');
+}
+
+function onReliefTransportChange(index) {
+  const mode = document.getElementById('relief-transport-' + index).value;
+  document.getElementById('relief-vehicle-div-' + index).style.display = mode === 'truck' ? '' : 'none';
+  document.getElementById('relief-drone-div-' + index).style.display = mode === 'drone' ? '' : 'none';
 }
 
 // ===== 策略信息显示 =====
@@ -517,7 +825,7 @@ function showStrategyInfo() {
   const mode = scenarioData.strategy_config?.mode || 'time_pressure';
   const modeName = getStrategyName(mode);
   document.getElementById('strategy-mode-display').innerHTML = 
-    `<span class="tag tag-purple">${modeName}</span>`;
+    `<span class="tag ${mode === 'emergency_relief' ? 'tag-green' : 'tag-purple'}">${modeName}</span>`;
   
   if (mode === 'agent_adversarial' && strategyContext?.hidden_disruptions) {
     document.getElementById('hidden-disruptions-section').style.display = '';
@@ -544,6 +852,10 @@ function showStrategyInfo() {
         <div class="text-center"><div class="text-lg font-bold text-danger">¥${formatNum(b.max_abandon_value)}</div><div class="text-sm text-muted">最多放弃价值</div></div>
       </div>
     `;
+  }
+
+  if (mode === 'emergency_relief') {
+    document.getElementById('relief-info-section').style.display = '';
   }
 }
 
@@ -601,28 +913,70 @@ async function submitPlan() {
   if (countdownTimer) clearInterval(countdownTimer);
   
   try {
-    // 收集学生决策
+    const mode = scenarioData.strategy_config?.mode || 'time_pressure';
     const cargos = scenarioData.cargo_manifest || [];
-    const actions = optimalPlan.actions || [];
-    const affectedCargoIds = new Set();
-    actions.forEach(a => a.cargo_ids?.forEach(id => affectedCargoIds.add(id)));
-    const affectedCargos = cargos.filter(c => affectedCargoIds.has(c.cargo_id));
-    
-    studentActions = affectedCargos.map((c, i) => {
-      const type = document.getElementById('action-type-' + i)?.value || 'reroute';
-      const vehicle = document.getElementById('vehicle-' + i)?.value || '';
-      const warehouse = document.getElementById('warehouse-' + i)?.value || '';
-      return {
-        cargo_id: c.cargo_id,
-        action_type: type,
-        vehicle_id: type === 'reroute' ? vehicle : '',
-        warehouse_id: type === 'warehouse_transfer' ? warehouse : '',
-        route: type === 'reroute' ? [c.current_location_node || c.origin_node, c.destination_node] : [],
-        cargo_value: c.value_yuan,
-        cargo_weight: c.weight_tons,
-        risk_level: type === 'reroute' ? 'high' : 'low',
-      };
-    });
+
+    if (mode === 'emergency_relief') {
+      // ===== 救灾模式: 收集救灾专用决策数据 =====
+      studentActions = cargos.map((c, i) => {
+        const transportMode = document.getElementById('relief-transport-' + i)?.value || 'truck';
+        const vehicle = document.getElementById('relief-vehicle-' + i)?.value || '';
+        const drone = document.getElementById('relief-drone-' + i)?.value || '';
+        const routeSelection = document.getElementById('relief-route-' + i)?.value || 'safe';
+        const safetyCargo = document.getElementById('relief-safety-cargo-' + i)?.checked || false;
+        const safetyMoisture = document.getElementById('relief-safety-moisture-' + i)?.checked || false;
+        const safetyVehicle = document.getElementById('relief-safety-vehicle-' + i)?.checked || false;
+        const safetyDriver = document.getElementById('relief-safety-driver-' + i)?.checked || false;
+        const safetyCount = [safetyCargo, safetyMoisture, safetyVehicle, safetyDriver].filter(Boolean).length;
+
+        return {
+          cargo_id: c.cargo_id,
+          action_type: 'reroute',
+          transport_mode: transportMode,
+          vehicle_id: transportMode === 'truck' ? vehicle : '',
+          drone_id: transportMode === 'drone' ? drone : '',
+          warehouse_id: '',
+          route: [c.current_location_node || c.origin_node, c.destination_node],
+          route_selection: routeSelection,
+          safety_checks: {
+            cargo_secure: safetyCargo,
+            moisture_proof: safetyMoisture,
+            vehicle_check: safetyVehicle,
+            driver_qualification: safetyDriver,
+          },
+          safety_count: safetyCount,
+          cargo_value: c.value_yuan,
+          cargo_weight: c.weight_tons,
+          risk_level: routeSelection === 'safe' ? 'low' : (transportMode === 'drone' ? 'medium' : 'high'),
+        };
+      });
+    } else {
+      // ===== 普通模式: 原有逻辑 =====
+      const actions = optimalPlan.actions || [];
+      const affectedCargoIds = new Set();
+      actions.forEach(a => a.cargo_ids?.forEach(id => affectedCargoIds.add(id)));
+      const affectedCargos = cargos.filter(c => affectedCargoIds.has(c.cargo_id));
+
+      studentActions = affectedCargos.map((c, i) => {
+        const type = document.getElementById('action-type-' + i)?.value || 'reroute';
+        const vehicle = document.getElementById('vehicle-' + i)?.value || '';
+        const drone = document.getElementById('drone-' + i)?.value || '';
+        const transportMode = document.getElementById('transport-mode-' + i)?.value || 'truck';
+        const warehouse = document.getElementById('warehouse-' + i)?.value || '';
+        return {
+          cargo_id: c.cargo_id,
+          action_type: type,
+          transport_mode: type === 'reroute' ? transportMode : 'truck',
+          vehicle_id: type === 'reroute' && transportMode === 'truck' ? vehicle : '',
+          drone_id: type === 'reroute' && transportMode === 'drone' ? drone : '',
+          warehouse_id: type === 'warehouse_transfer' ? warehouse : '',
+          route: type === 'reroute' ? [c.current_location_node || c.origin_node, c.destination_node] : [],
+          cargo_value: c.value_yuan,
+          cargo_weight: c.weight_tons,
+          risk_level: type === 'reroute' ? (transportMode === 'drone' ? 'medium' : 'high') : 'low',
+        };
+      });
+    }
     
     const submitTime = (Date.now() - decisionStartTime) / 1000;
     
@@ -633,9 +987,10 @@ async function submitPlan() {
     const result = await API.post('/api/student/submit', {
       session_id: sessionId,
       scenario_id: scenarioData.scenario_id,
-      student_id: 'STU-001',
+      student_id: _studentId,
       actions: studentActions,
       submit_time_sec: submitTime,
+      gtask_id: gtaskId,
     });
     
     if (result.error) {
@@ -648,6 +1003,7 @@ async function submitPlan() {
     // 显示对比结果
     showComparison(result);
     showResult(result);
+    showReliefAssessment(result);
     updateSteps(5);
     
     document.getElementById('comparison-section').style.display = '';
@@ -682,6 +1038,7 @@ function showComparison(result) {
       <h4>👤 你的方案</h4>
       <div class="text-sm">总成本: <span class="font-bold ${stu.total_cost > opt.total_cost ? 'text-danger' : 'text-success'}">¥${formatNum(stu.total_cost)}</span></div>
       <div class="text-sm">使用车辆: ${stu.vehicles_used}辆</div>
+      <div class="text-sm">🚁 无人机运输: ${(studentActions || []).filter(a => a.transport_mode === 'drone').length}单</div>
       <div class="text-sm">使用仓库: ${stu.warehouses_used}个</div>
       <div class="text-sm">改道送达: ${stu.cargo_delivered}单</div>
       <div class="text-sm">转仓暂存: ${stu.cargo_stored}单</div>
@@ -728,6 +1085,108 @@ function showResult(result) {
   if (result.profile?.radar_data) {
     drawRadarChart(result.profile.radar_data);
   }
+}
+
+function showReliefAssessment(result) {
+  const assessment = result.emergency_assessment;
+  if (!assessment) return;
+  
+  document.getElementById('relief-assessment-section').style.display = '';
+  const el = document.getElementById('relief-assessment-content');
+  
+  const gradeColors = {S: '#059669', A: '#10b981', B: '#f59e0b', C: '#f97316', D: '#ef4444'};
+  const gradeColor = gradeColors[assessment.grade] || '#64748b';
+  
+  const safetyBar = (assessment.safety_score).toFixed(1);
+  const speedBar = (assessment.speed_score).toFixed(1);
+  const totalBar = (assessment.total_score).toFixed(1);
+  
+  const safetyFactorsHtml = assessment.safety_factors.map(f => `
+    <div style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #e2e8f0;">
+      <div style="flex:1;">
+        <div style="font-size:13px; font-weight:600; color:#1e293b;">${f.name}</div>
+        <div style="font-size:11px; color:#94a3b8;">${f.detail}</div>
+      </div>
+      <div style="text-align:right;">
+        <span style="font-size:16px; font-weight:700; color:#059669;">${f.score}</span>
+        <span style="font-size:11px; color:#94a3b8;">/${f.max_score}</span>
+      </div>
+    </div>
+  `).join('');
+  
+  const speedFactorsHtml = assessment.speed_factors.map(f => `
+    <div style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #e2e8f0;">
+      <div style="flex:1;">
+        <div style="font-size:13px; font-weight:600; color:#1e293b;">${f.name}</div>
+        <div style="font-size:11px; color:#94a3b8;">${f.detail}</div>
+      </div>
+      <div style="text-align:right;">
+        <span style="font-size:16px; font-weight:700; color:#0891b2;">${f.score}</span>
+        <span style="font-size:11px; color:#94a3b8;">/${f.max_score}</span>
+      </div>
+    </div>
+  `).join('');
+  
+  const suggestionsHtml = assessment.suggestions.map(s => `
+    <li style="padding:4px 0; font-size:13px; color:#475569;">${s}</li>
+  `).join('');
+  
+  el.innerHTML = `
+    <!-- 综合评分 -->
+    <div style="text-align:center; padding:20px 0; background:linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 100%); border-radius:12px; margin-bottom:16px;">
+      <div style="font-size:48px; font-weight:800; color:${gradeColor};">${assessment.total_score}</div>
+      <div style="font-size:24px; font-weight:700; color:${gradeColor}; margin-top:4px;">${assessment.grade} 级</div>
+      <div style="font-size:12px; color:#64748b; margin-top:4px;">救灾决策综合评分</div>
+    </div>
+    
+    <!-- 双维度进度条 -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+      <div style="padding:16px; background:#f0fdf4; border-radius:10px; border:1px solid #bbf7d0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-weight:700; color:#065f46;">🛡️ 安全维度</span>
+          <span style="font-size:20px; font-weight:800; color:#059669;">${safetyBar}</span>
+        </div>
+        <div style="height:8px; background:#dcfce7; border-radius:4px; overflow:hidden;">
+          <div style="height:100%; width:${safetyBar}%; background:#10b981; border-radius:4px; transition:width 0.6s;"></div>
+        </div>
+      </div>
+      <div style="padding:16px; background:#f0f9ff; border-radius:10px; border:1px solid #bae6fd;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-weight:700; color:#0c4a6e;">⚡ 速度维度</span>
+          <span style="font-size:20px; font-weight:800; color:#0891b2;">${speedBar}</span>
+        </div>
+        <div style="height:8px; background:#e0f2fe; border-radius:4px; overflow:hidden;">
+          <div style="height:100%; width:${speedBar}%; background:#0ea5e9; border-radius:4px; transition:width 0.6s;"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 维度明细 -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
+      <div style="padding:16px; background:white; border-radius:10px; border:1px solid #e2e8f0;">
+        <h4 style="margin:0 0 8px; color:#065f46; font-size:14px;">🛡️ 安全维度明细</h4>
+        ${safetyFactorsHtml}
+        <div style="display:flex; justify-content:space-between; padding:8px 0; font-weight:700;">
+          <span style="color:#065f46;">安全小计</span>
+          <span style="color:#059669;">${safetyBar}/100</span>
+        </div>
+      </div>
+      <div style="padding:16px; background:white; border-radius:10px; border:1px solid #e2e8f0;">
+        <h4 style="margin:0 0 8px; color:#0c4a6e; font-size:14px;">⚡ 速度维度明细</h4>
+        ${speedFactorsHtml}
+        <div style="display:flex; justify-content:space-between; padding:8px 0; font-weight:700;">
+          <span style="color:#0c4a6e;">速度小计</span>
+          <span style="color:#0891b2;">${speedBar}/100</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 改进建议 -->
+    <div style="padding:16px; background:#fffbeb; border-radius:10px; border:1px solid #fde68a;">
+      <h4 style="margin:0 0 8px; color:#92400e; font-size:14px;">💡 考核建议</h4>
+      <ul style="margin:0; padding-left:18px;">${suggestionsHtml}</ul>
+    </div>
+  `;
 }
 
 let radarChartInstance = null;

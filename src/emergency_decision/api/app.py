@@ -19,7 +19,7 @@ import time
 import uuid
 import hashlib
 import secrets
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from pathlib import Path
 
@@ -45,6 +45,7 @@ from emergency_decision.realtime_data import (
     EarthquakeDataFetcher, TyphoonDataFetcher, WeatherAlertFetcher,
     earthquake_to_scenario_params, typhoon_to_scenario_params,
     weather_alert_to_scenario_params, fetch_latest_disasters,
+    get_license_plate_prefix,
 )
 
 # ============================================================
@@ -57,10 +58,11 @@ _scenarios_env = os.environ.get("SCENARIOS_DIR")
 SCENARIOS_DIR = Path(_scenarios_env) if _scenarios_env else BASE_DIR / "scenarios"
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 
-app = Flask(__name__, 
+app = Flask(__name__,
             template_folder=str(WEB_DIR / "templates"),
             static_folder=str(WEB_DIR / "static"))
 app.secret_key = "emergency_decision_teaching_2026"
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 # ============================================================
 # 虚拟账号系统
@@ -70,16 +72,33 @@ VIRTUAL_USERS = {
     # 教师账号
     "teacher01": {"password": "teach123", "role": "teacher", "name": "王老师", "avatar": "👨‍🏫"},
     "teacher02": {"password": "teach456", "role": "teacher", "name": "李老师", "avatar": "👩‍🏫"},
-    # 学生账号
-    "student01": {"password": "stud123", "role": "student", "name": "张同学", "avatar": "👨‍🎓"},
-    "student02": {"password": "stud456", "role": "student", "name": "刘同学", "avatar": "👩‍🎓"},
-    "student03": {"password": "stud789", "role": "student", "name": "陈同学", "avatar": "🧑‍🎓"},
+    # 学生账号（20人班级）- 密码统一 stud123
+    "student01": {"password": "stud123", "role": "student", "name": "张伟", "avatar": "🧑‍🎓"},
+    "student02": {"password": "stud123", "role": "student", "name": "刘思怡", "avatar": "👩‍🎓"},
+    "student03": {"password": "stud123", "role": "student", "name": "陈浩宇", "avatar": "🧑‍🎓"},
+    "student04": {"password": "stud123", "role": "student", "name": "杨雨桐", "avatar": "👩‍🎓"},
+    "student05": {"password": "stud123", "role": "student", "name": "赵磊", "avatar": "🧑‍🎓"},
+    "student06": {"password": "stud123", "role": "student", "name": "黄家俊", "avatar": "🧑‍🎓"},
+    "student07": {"password": "stud123", "role": "student", "name": "周若琳", "avatar": "👩‍🎓"},
+    "student08": {"password": "stud123", "role": "student", "name": "吴俊杰", "avatar": "🧑‍🎓"},
+    "student09": {"password": "stud123", "role": "student", "name": "徐嘉乐", "avatar": "🧑‍🎓"},
+    "student10": {"password": "stud123", "role": "student", "name": "孙悦", "avatar": "👩‍🎓"},
+    "student11": {"password": "stud123", "role": "student", "name": "马志远", "avatar": "🧑‍🎓"},
+    "student12": {"password": "stud123", "role": "student", "name": "胡瑞阳", "avatar": "🧑‍🎓"},
+    "student13": {"password": "stud123", "role": "student", "name": "朱慧琳", "avatar": "👩‍🎓"},
+    "student14": {"password": "stud123", "role": "student", "name": "林涛", "avatar": "🧑‍🎓"},
+    "student15": {"password": "stud123", "role": "student", "name": "何诗涵", "avatar": "👩‍🎓"},
+    "student16": {"password": "stud123", "role": "student", "name": "罗浩天", "avatar": "🧑‍🎓"},
+    "student17": {"password": "stud123", "role": "student", "name": "梁梓轩", "avatar": "🧑‍🎓"},
+    "student18": {"password": "stud123", "role": "student", "name": "宋佳怡", "avatar": "👩‍🎓"},
+    "student19": {"password": "stud123", "role": "student", "name": "郑凯", "avatar": "🧑‍🎓"},
+    "student20": {"password": "stud123", "role": "student", "name": "韩雨萱", "avatar": "👩‍🎓"},
 }
 
 # 各角色可访问的页面
 ROLE_PAGES = {
-    "teacher": ["/", "/editor", "/decision", "/profile", "/dashboard", "/disaster-query", "/logistics", "/company"],
-    "student": ["/", "/decision", "/profile", "/disaster-query", "/company"],
+    "teacher": ["/", "/editor", "/decision", "/profile", "/dashboard", "/disaster-query", "/logistics", "/company", "/mem", "/manage", "/research", "/knowledge"],
+    "student": ["/", "/decision", "/profile", "/disaster-query", "/company", "/mem", "/manage", "/research", "/knowledge", "/scenarios", "/my-scores"],
 }
 
 # 不需要登录就能访问的页面
@@ -158,13 +177,48 @@ profile_gen = ProfileGenerator()
 growth_tracker = GrowthTracker()
 strategy_ctrl = StrategyController()
 
-# 存储运行时数据 (实际项目中应使用数据库)
+# 存储运行时数据 (JSON文件持久化)
+STATE_FILE = BASE_DIR / "_runtime_state.json"
+
 _runtime_store = {
     "sessions": {},        # session_id -> {student_id, scenario_id, ...}
     "results": {},         # session_id -> engine result
     "profiles": {},        # student_id -> [profile dicts]
     "behavior_events": {}, # session_id -> [events]
+    "group_tasks": {},     # gtask_id -> group task data
+    "progress": {},        # student_id -> [progress entries]
 }
+
+def save_state():
+    """将运行时数据持久化到JSON文件"""
+    try:
+        with open(STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(_runtime_store, f, ensure_ascii=False, indent=2, default=str)
+    except Exception as e:
+        print(f"[SAVE ERROR] {e}")
+
+def load_state():
+    """从JSON文件恢复运行时数据"""
+    global _runtime_store
+    if STATE_FILE.exists():
+        try:
+            with open(STATE_FILE, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+            _runtime_store = loaded
+            print(f"[LOAD] 已从 {STATE_FILE} 恢复运行时数据")
+        except Exception as e:
+            print(f"[LOAD ERROR] {e}，使用初始数据")
+
+# 启动时加载持久化数据
+import json
+load_state()
+
+@app.after_request
+def auto_save_state(response):
+    """修改操作后自动保存状态"""
+    if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+        save_state()
+    return response
 
 
 # ============================================================
@@ -202,8 +256,8 @@ def api_login():
         "avatar": user["avatar"],
     }
 
-    # 根据角色跳转不同首页
-    redirect_url = "/dashboard" if user["role"] == "teacher" else "/decision"
+    # 登录后统一跳转到系统首页
+    redirect_url = "/"
     return jsonify({
         "status": "ok",
         "user": session["user"],
@@ -323,11 +377,7 @@ def index():
     ok, redirect_url = _check_auth("/")
     if not ok:
         return redirect(redirect_url)
-    # 已登录用户跳转到角色默认页
-    user = session.get("user", {})
-    if user.get("role") == "teacher":
-        return redirect("/dashboard")
-    return redirect("/decision")
+    return render_template("index.html", active_page="home")
 
 @app.route("/editor")
 def editor():
@@ -377,6 +427,1077 @@ def company_page():
     if not ok:
         return redirect(redirect_url)
     return render_template("company_dashboard.html", active_page="company")
+
+
+# ============================================================
+# 七大模块 - 管·研·建 页面路由
+# ============================================================
+
+@app.route("/manage")
+def manage_page():
+    """管 - 课程管理：课堂分组、任务分发、进度监控"""
+    ok, redirect_url = _check_auth("/manage")
+    if not ok:
+        return redirect(redirect_url)
+    return render_template("manage.html", active_page="manage")
+
+
+@app.route("/research")
+def research_page():
+    """研 - 案例生成：基于全省物流数据自动生成教学案例"""
+    ok, redirect_url = _check_auth("/research")
+    if not ok:
+        return redirect(redirect_url)
+    return render_template("research.html", active_page="research")
+
+
+@app.route("/knowledge")
+def knowledge_page():
+    """建 - 知识库建设：持续接入新数据、更新知识图谱"""
+    ok, redirect_url = _check_auth("/knowledge")
+    if not ok:
+        return redirect(redirect_url)
+    return render_template("knowledge.html", active_page="knowledge")
+
+
+@app.route("/scenarios")
+def scenario_intro_page():
+    """教（学生视角）- 场景简介：查看灾害类型与场景介绍"""
+    ok, redirect_url = _check_auth("/scenarios")
+    if not ok:
+        return redirect(redirect_url)
+    return render_template("scenario_intro.html", active_page="scenarios")
+
+
+@app.route("/my-scores")
+def my_scores_page():
+    """评（学生视角）- 我的成绩：查看自己的评分记录"""
+    ok, redirect_url = _check_auth("/my-scores")
+    if not ok:
+        return redirect(redirect_url)
+    return render_template("my_scores.html", active_page="my-scores")
+
+
+# ============================================================
+# 管·研·建 API
+# ============================================================
+
+# --- 管：课程管理 ---
+_runtime_store.setdefault("classes", {})       # class_id -> {name, teacher, students:[], groups:[], created_at}
+_runtime_store.setdefault("tasks", {})          # task_id -> {class_id, scenario_id, title, assignee, status, deadline}
+_runtime_store.setdefault("progress", {})      # student_id -> [{task_id, status, submit_time, score}]
+_runtime_store.setdefault("group_tasks", {})    # gtask_id -> {class_id, group_ids, scenario_id, title, deadline, created_at, status}
+
+# 自动创建默认班级（含20名学生）—— 服务器启动时执行
+_DEFAULT_CLASS_ID = "CLS-202601"
+if _DEFAULT_CLASS_ID not in _runtime_store["classes"]:
+    _default_students = [
+        {"student_id": f"student{i:02d}", "name": VIRTUAL_USERS[f"student{i:02d}"]["name"],
+         "avatar": VIRTUAL_USERS[f"student{i:02d}"]["avatar"]}
+        for i in range(1, 21)
+    ]
+    _runtime_store["classes"][_DEFAULT_CLASS_ID] = {
+        "name": "2026级物流管理1班",
+        "teacher": "王老师",
+        "teacher_id": "teacher01",
+        "students": _default_students,
+        "groups": [],
+        "created_at": time.strftime("%Y-%m-%d %H:%M"),
+    }
+    print(f"[AUTO] 默认班级已创建: {_DEFAULT_CLASS_ID} (20名学生)")
+
+@app.route("/api/manage/classes", methods=["GET"])
+def api_get_classes():
+    """获取班级列表"""
+    classes = []
+    for cid, c in _runtime_store["classes"].items():
+        classes.append({
+            "class_id": cid,
+            "name": c.get("name", ""),
+            "teacher": c.get("teacher", ""),
+            "student_count": len(c.get("students", [])),
+            "group_count": len(c.get("groups", [])),
+            "created_at": c.get("created_at", ""),
+        })
+    return jsonify({"classes": classes})
+
+
+@app.route("/api/manage/classes", methods=["POST"])
+def api_create_class():
+    """创建班级"""
+    data = request.get_json()
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "请输入班级名称"}), 400
+    class_id = f"CLS-{int(time.time())%1000000:06d}"
+    user = session.get("user", {})
+    _runtime_store["classes"][class_id] = {
+        "name": name,
+        "teacher": user.get("name", ""),
+        "teacher_id": user.get("username", ""),
+        "students": [],
+        "groups": [],
+        "created_at": time.strftime("%Y-%m-%d %H:%M"),
+    }
+    return jsonify({"status": "ok", "class_id": class_id})
+
+
+@app.route("/api/manage/classes/<class_id>/students", methods=["POST"])
+def api_add_student(class_id):
+    """添加学生到班级"""
+    cls = _runtime_store["classes"].get(class_id)
+    if not cls:
+        return jsonify({"error": "班级不存在"}), 404
+    data = request.get_json()
+    student = {
+        "student_id": data.get("student_id", ""),
+        "name": data.get("name", ""),
+        "avatar": data.get("avatar", "👨‍🎓"),
+    }
+    cls["students"].append(student)
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/manage/classes/<class_id>/groups", methods=["POST"])
+def api_create_group(class_id):
+    """创建课堂分组"""
+    cls = _runtime_store["classes"].get(class_id)
+    if not cls:
+        return jsonify({"error": "班级不存在"}), 404
+    data = request.get_json()
+    group_name = data.get("name", "")
+    member_ids = data.get("members", [])
+    group = {
+        "group_id": f"GRP-{len(cls['groups'])+1:03d}",
+        "name": group_name,
+        "members": member_ids,
+        "leader": data.get("leader", ""),
+    }
+    cls["groups"].append(group)
+    return jsonify({"status": "ok", "group": group})
+
+
+@app.route("/api/manage/tasks", methods=["POST"])
+def api_assign_task():
+    """任务分发"""
+    data = request.get_json()
+    class_id = data.get("class_id", "")
+    scenario_id = data.get("scenario_id", "")
+    title = data.get("title", "")
+    assignees = data.get("assignees", [])  # student_id 列表
+    deadline = data.get("deadline", "")
+
+    cls = _runtime_store["classes"].get(class_id)
+    if not cls:
+        return jsonify({"error": "班级不存在"}), 404
+
+    task_id = f"TASK-{int(time.time())%1000000:06d}"
+    task = {
+        "task_id": task_id,
+        "class_id": class_id,
+        "scenario_id": scenario_id,
+        "title": title,
+        "assignees": assignees,
+        "status": "assigned",
+        "deadline": deadline,
+        "created_at": time.strftime("%Y-%m-%d %H:%M"),
+    }
+    _runtime_store["tasks"][task_id] = task
+
+    # 为每个学生创建进度记录
+    for sid in assignees:
+        if sid not in _runtime_store["progress"]:
+            _runtime_store["progress"][sid] = []
+        _runtime_store["progress"][sid].append({
+            "task_id": task_id,
+            "status": "pending",
+            "submit_time": None,
+            "score": None,
+        })
+
+    return jsonify({"status": "ok", "task_id": task_id})
+
+
+@app.route("/api/manage/tasks/<class_id>", methods=["GET"])
+def api_get_tasks(class_id):
+    """获取班级任务列表"""
+    tasks = []
+    for tid, t in _runtime_store["tasks"].items():
+        if t.get("class_id") == class_id:
+            # 统计完成情况
+            total = len(t.get("assignees", []))
+            completed = sum(1 for sid in t.get("assignees", [])
+                           for p in _runtime_store.get("progress", {}).get(sid, [])
+                           if p.get("task_id") == tid and p.get("status") == "completed")
+            tasks.append({
+                **t,
+                "total": total,
+                "completed": completed,
+                "progress_pct": round(completed / total * 100) if total else 0,
+            })
+    return jsonify({"tasks": tasks})
+
+
+@app.route("/api/manage/progress/<class_id>", methods=["GET"])
+def api_get_class_progress(class_id):
+    """获取班级进度监控"""
+    cls = _runtime_store["classes"].get(class_id)
+    if not cls:
+        return jsonify({"error": "班级不存在"}), 404
+
+    students_progress = []
+    for s in cls.get("students", []):
+        sid = s["student_id"]
+        progress = _runtime_store.get("progress", {}).get(sid, [])
+        total_tasks = len(progress)
+        completed = sum(1 for p in progress if p.get("status") == "completed")
+        avg_score = None
+        scores = [p.get("score") for p in progress if p.get("score") is not None]
+        if scores:
+            avg_score = round(sum(scores) / len(scores), 1)
+        students_progress.append({
+            **s,
+            "total_tasks": total_tasks,
+            "completed": completed,
+            "progress_pct": round(completed / total_tasks * 100) if total_tasks else 0,
+            "avg_score": avg_score,
+        })
+
+    return jsonify({
+        "class_name": cls.get("name", ""),
+        "total_students": len(cls.get("students", [])),
+        "total_groups": len(cls.get("groups", [])),
+        "students_progress": students_progress,
+        "groups": cls.get("groups", []),
+    })
+
+
+# ============================================================
+# 管：增强功能 —— 分组管理 / 组任务 / 确认流程 / 未完成提醒
+# ============================================================
+
+def _get_student_name(sid):
+    """根据student_id获取学生姓名"""
+    u = VIRTUAL_USERS.get(sid, {})
+    return u.get("name", sid)
+
+
+def _get_student_avatar(sid):
+    u = VIRTUAL_USERS.get(sid, {})
+    return u.get("avatar", "🧑‍🎓")
+
+
+def _student_in_group(cls, student_id):
+    """返回学生所在的分组，没有则返回None"""
+    for g in cls.get("groups", []):
+        if student_id in g.get("members", []):
+            return g
+    return None
+
+
+# --- 分组管理（自组队 + 教师调整） ---
+
+@app.route("/api/manage/classes/<class_id>/groups", methods=["GET"])
+def api_get_groups(class_id):
+    """获取班级所有分组（含未分组学生）"""
+    cls = _runtime_store["classes"].get(class_id)
+    if not cls:
+        return jsonify({"error": "班级不存在"}), 404
+    groups = []
+    for g in cls.get("groups", []):
+        members_info = []
+        for mid in g.get("members", []):
+            members_info.append({
+                "student_id": mid,
+                "name": _get_student_name(mid),
+                "avatar": _get_student_avatar(mid),
+            })
+        groups.append({
+            "group_id": g["group_id"],
+            "name": g.get("name", ""),
+            "leader": g.get("leader", ""),
+            "leader_name": _get_student_name(g.get("leader", "")) if g.get("leader") else "",
+            "members": members_info,
+            "self_organized": g.get("self_organized", False),
+            "created_at": g.get("created_at", ""),
+        })
+    # 未分组学生
+    grouped_ids = set()
+    for g in cls.get("groups", []):
+        grouped_ids.update(g.get("members", []))
+    ungrouped = []
+    for s in cls.get("students", []):
+        if s["student_id"] not in grouped_ids:
+            ungrouped.append({
+                "student_id": s["student_id"],
+                "name": s.get("name", s["student_id"]),
+                "avatar": s.get("avatar", "🧑‍🎓"),
+            })
+    return jsonify({"groups": groups, "ungrouped": ungrouped})
+
+
+@app.route("/api/manage/groups/self-create", methods=["POST"])
+def api_self_create_group():
+    """学生自组队：创建小组并加入（可同时邀请组员）"""
+    data = request.get_json()
+    class_id = data.get("class_id", "")
+    student_id = data.get("student_id", "")
+    group_name = data.get("group_name", "")
+    invitees = data.get("invitees", [])  # 可选：同时邀请的组员ID
+
+    cls = _runtime_store["classes"].get(class_id)
+    if not cls:
+        return jsonify({"error": "班级不存在"}), 404
+
+    # 检查学生是否已在分组中
+    existing = _student_in_group(cls, student_id)
+    if existing:
+        return jsonify({"error": f"你已在分组「{existing.get('name')}」中，请先退出"}), 400
+
+    # 检查人数限制（4-5人）
+    members = [student_id] + [s for s in invitees if s != student_id]
+    if len(members) > 5:
+        return jsonify({"error": "每组最多5人"}), 400
+
+    group_id = f"GRP-{int(time.time())%1000000:04d}"
+    group = {
+        "group_id": group_id,
+        "name": group_name or f"第{len(cls['groups'])+1}小组",
+        "members": members,
+        "leader": student_id,  # 创建者默认为组长
+        "self_organized": True,
+        "created_at": time.strftime("%Y-%m-%d %H:%M"),
+    }
+    cls["groups"].append(group)
+    return jsonify({"status": "ok", "group_id": group_id, "group": group})
+
+
+@app.route("/api/manage/groups/<group_id>/join", methods=["POST"])
+def api_join_group(group_id):
+    """学生加入已有分组"""
+    data = request.get_json()
+    class_id = data.get("class_id", "")
+    student_id = data.get("student_id", "")
+
+    cls = _runtime_store["classes"].get(class_id)
+    if not cls:
+        return jsonify({"error": "班级不存在"}), 404
+
+    # 找到分组
+    target_group = None
+    for g in cls["groups"]:
+        if g["group_id"] == group_id:
+            target_group = g
+            break
+    if not target_group:
+        return jsonify({"error": "分组不存在"}), 404
+
+    # 检查是否已在其他分组
+    existing = _student_in_group(cls, student_id)
+    if existing and existing["group_id"] != group_id:
+        return jsonify({"error": f"你已在「{existing.get('name')}」中，请先退出"}), 400
+
+    if student_id in target_group["members"]:
+        return jsonify({"error": "你已在该分组中"}), 400
+
+    if len(target_group["members"]) >= 5:
+        return jsonify({"error": "该分组已满（最多5人）"}), 400
+
+    target_group["members"].append(student_id)
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/manage/groups/<group_id>/leave", methods=["POST"])
+def api_leave_group(group_id):
+    """学生退出分组"""
+    data = request.get_json()
+    class_id = data.get("class_id", "")
+    student_id = data.get("student_id", "")
+
+    cls = _runtime_store["classes"].get(class_id)
+    if not cls:
+        return jsonify({"error": "班级不存在"}), 404
+
+    for g in cls["groups"]:
+        if g["group_id"] == group_id:
+            if student_id in g["members"]:
+                g["members"].remove(student_id)
+                # 如果组长退出，自动指定第一个成员为新组长
+                if g.get("leader") == student_id:
+                    g["leader"] = g["members"][0] if g["members"] else ""
+                # 如果分组空了，删除
+                if not g["members"]:
+                    cls["groups"].remove(g)
+            break
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/manage/groups/<group_id>/adjust", methods=["POST"])
+def api_adjust_group(group_id):
+    """教师调整分组：移动学生 / 重命名 / 设置组长"""
+    data = request.get_json()
+    class_id = data.get("class_id", "")
+    action = data.get("action", "")  # "move" | "rename" | "set_leader" | "remove_member"
+    cls = _runtime_store["classes"].get(class_id)
+    if not cls:
+        return jsonify({"error": "班级不存在"}), 404
+
+    target_group = None
+    for g in cls["groups"]:
+        if g["group_id"] == group_id:
+            target_group = g
+            break
+    if not target_group:
+        return jsonify({"error": "分组不存在"}), 404
+
+    if action == "rename":
+        target_group["name"] = data.get("name", target_group["name"])
+    elif action == "set_leader":
+        new_leader = data.get("leader", "")
+        if new_leader not in target_group["members"]:
+            return jsonify({"error": "该学生不在本组"}), 400
+        target_group["leader"] = new_leader
+    elif action == "remove_member":
+        sid = data.get("student_id", "")
+        if sid in target_group["members"]:
+            target_group["members"].remove(sid)
+            if target_group.get("leader") == sid:
+                target_group["leader"] = target_group["members"][0] if target_group["members"] else ""
+            if not target_group["members"]:
+                cls["groups"].remove(target_group)
+    elif action == "add_member":
+        sid = data.get("student_id", "")
+        # 先从其他组移除
+        for g in cls["groups"]:
+            if sid in g.get("members", []):
+                g["members"].remove(sid)
+                if g.get("leader") == sid:
+                    g["leader"] = g["members"][0] if g["members"] else ""
+                if not g["members"]:
+                    cls["groups"].remove(g)
+                break
+        if len(target_group["members"]) >= 5:
+            return jsonify({"error": "该分组已满（最多5人）"}), 400
+        target_group["members"].append(sid)
+    else:
+        return jsonify({"error": "未知操作"}), 400
+
+    return jsonify({"status": "ok"})
+
+
+@app.route("/api/manage/groups/auto", methods=["POST"])
+def api_auto_group():
+    """教师一键自动分组（4-5人一组）"""
+    data = request.get_json()
+    class_id = data.get("class_id", "")
+    group_size = data.get("group_size", 4)
+    cls = _runtime_store["classes"].get(class_id)
+    if not cls:
+        return jsonify({"error": "班级不存在"}), 404
+
+    all_students = [s["student_id"] for s in cls.get("students", [])]
+    # 已分组的不参与
+    grouped_ids = set()
+    for g in cls.get("groups", []):
+        grouped_ids.update(g.get("members", []))
+    ungrouped_ids = [sid for sid in all_students if sid not in grouped_ids]
+
+    import random
+    random.shuffle(ungrouped_ids)
+    new_groups = []
+    idx = len(cls["groups"]) + 1
+    while ungrouped_ids:
+        chunk = ungrouped_ids[:group_size]
+        ungrouped_ids = ungrouped_ids[group_size:]
+        if len(chunk) < group_size and ungrouped_ids:
+            # 把剩余的不足group_size的尽量匀到其他组
+            while chunk and ungrouped_ids:
+                chunk.append(ungrouped_ids.pop(0))
+                if len(chunk) >= group_size:
+                    break
+        if not chunk:
+            break
+        group = {
+            "group_id": f"GRP-{int(time.time())+idx:04d}",
+            "name": f"第{idx}小组",
+            "members": chunk,
+            "leader": chunk[0],
+            "self_organized": False,
+            "created_at": time.strftime("%Y-%m-%d %H:%M"),
+        }
+        cls["groups"].append(group)
+        new_groups.append(group)
+        idx += 1
+
+    return jsonify({"status": "ok", "new_groups": len(new_groups)})
+
+
+# --- 组任务分发 + 确认流程 ---
+
+@app.route("/api/manage/group-tasks", methods=["POST"])
+def api_assign_group_task():
+    """教师向小组分发任务（带截止时间）"""
+    data = request.get_json()
+    class_id = data.get("class_id", "")
+    group_ids = data.get("group_ids", [])
+    title = data.get("title", "")
+    scenario_id = data.get("scenario_id", "")
+    deadline = data.get("deadline", "")
+    description = data.get("description", "")
+
+    cls = _runtime_store["classes"].get(class_id)
+    if not cls:
+        return jsonify({"error": "班级不存在"}), 404
+    if not title:
+        return jsonify({"error": "请输入任务标题"}), 400
+    if not group_ids:
+        return jsonify({"error": "请至少选择一个分组"}), 400
+
+    gtask_id = f"GTASK-{int(time.time())%1000000:06d}"
+    # 为每个选中的分组创建确认记录
+    confirmations = {}
+    for gid in group_ids:
+        g = None
+        for grp in cls["groups"]:
+            if grp["group_id"] == gid:
+                g = grp
+                break
+        if not g:
+            continue
+        member_confirms = {}
+        leader_confirmed = False
+        for mid in g.get("members", []):
+            member_confirms[mid] = False
+        confirmations[gid] = {
+            "group_id": gid,
+            "group_name": g.get("name", ""),
+            "leader": g.get("leader", ""),
+            "members": g.get("members", []),
+            "leader_confirmed": leader_confirmed,
+            "member_confirmations": member_confirms,
+        }
+
+    gtask = {
+        "gtask_id": gtask_id,
+        "class_id": class_id,
+        "title": title,
+        "scenario_id": scenario_id,
+        "deadline": deadline,
+        "description": description,
+        "created_at": time.strftime("%Y-%m-%d %H:%M"),
+        "status": "published",  # published -> leader_accepted -> members_accepted -> in_progress -> completed
+        "confirmations": confirmations,
+    }
+    _runtime_store["group_tasks"][gtask_id] = gtask
+    return jsonify({"status": "ok", "gtask_id": gtask_id})
+
+
+@app.route("/api/manage/group-tasks/<class_id>", methods=["GET"])
+def api_get_group_tasks(class_id):
+    """获取班级所有组任务（含决策完成进度）"""
+    tasks = []
+    for gtid, gt in _runtime_store["group_tasks"].items():
+        if gt.get("class_id") != class_id:
+            continue
+        # 计算确认进度
+        total_groups = len(gt.get("confirmations", {}))
+        leader_done = sum(1 for c in gt.get("confirmations", {}).values() if c.get("leader_confirmed"))
+        member_done = sum(1 for c in gt.get("confirmations", {}).values()
+                         if c.get("member_confirmations") and all(c["member_confirmations"].values()))
+
+        # 计算决策推演完成进度
+        all_members = set()
+        completed_members = set()
+        for gid, conf in gt.get("confirmations", {}).items():
+            for mid in conf.get("members", []):
+                all_members.add(mid)
+                mp = _runtime_store.get("progress", {}).get(mid, [])
+                if any(p.get("task_id") == gtid and p.get("status") == "completed" for p in mp):
+                    completed_members.add(mid)
+        total_members = len(all_members)
+        decision_completed = len(completed_members)
+
+        tasks.append({
+            "gtask_id": gtid,
+            "title": gt.get("title", ""),
+            "scenario_id": gt.get("scenario_id", ""),
+            "deadline": gt.get("deadline", ""),
+            "description": gt.get("description", ""),
+            "created_at": gt.get("created_at", ""),
+            "status": gt.get("status", ""),
+            "total_groups": total_groups,
+            "leader_confirmed_count": leader_done,
+            "all_confirmed_count": member_done,
+            "total_members": total_members,
+            "decision_completed_count": decision_completed,
+            "decision_pct": round(decision_completed / total_members * 100) if total_members else 0,
+            "confirmations": gt.get("confirmations", {}),
+        })
+    return jsonify({"tasks": tasks})
+
+
+@app.route("/api/manage/group-tasks/<gtask_id>/leader-confirm", methods=["POST"])
+def api_leader_confirm(gtask_id):
+    """组长确认接受任务"""
+    data = request.get_json()
+    group_id = data.get("group_id", "")
+    student_id = data.get("student_id", "")
+
+    gt = _runtime_store["group_tasks"].get(gtask_id)
+    if not gt:
+        return jsonify({"error": "任务不存在"}), 404
+
+    conf = gt.get("confirmations", {}).get(group_id)
+    if not conf:
+        return jsonify({"error": "该分组未分配此任务"}), 400
+
+    if conf.get("leader") != student_id:
+        return jsonify({"error": "只有组长可以确认接受任务"}), 403
+
+    conf["leader_confirmed"] = True
+    # 更新整体状态
+    all_leader = all(c.get("leader_confirmed") for c in gt.get("confirmations", {}).values())
+    if all_leader:
+        gt["status"] = "leader_accepted"
+    return jsonify({"status": "ok", "leader_confirmed": True})
+
+
+@app.route("/api/manage/group-tasks/<gtask_id>/member-confirm", methods=["POST"])
+def api_member_confirm(gtask_id):
+    """组员确认接受任务"""
+    data = request.get_json()
+    group_id = data.get("group_id", "")
+    student_id = data.get("student_id", "")
+
+    gt = _runtime_store["group_tasks"].get(gtask_id)
+    if not gt:
+        return jsonify({"error": "任务不存在"}), 404
+
+    conf = gt.get("confirmations", {}).get(group_id)
+    if not conf:
+        return jsonify({"error": "该分组未分配此任务"}), 400
+
+    if student_id not in conf.get("members", []):
+        return jsonify({"error": "你不在该分组中"}), 403
+
+    if not conf.get("leader_confirmed"):
+        return jsonify({"error": "组长尚未确认接受任务，请等待组长确认"}), 400
+
+    conf.setdefault("member_confirmations", {})[student_id] = True
+
+    # 检查所有组的所有成员是否都已确认
+    all_confirmed = True
+    for c in gt.get("confirmations", {}).values():
+        member_cfs = c.get("member_confirmations", {})
+        if not all(member_cfs.values()) or len(member_cfs) < len(c.get("members", [])):
+            all_confirmed = False
+            break
+    if all_confirmed:
+        gt["status"] = "in_progress"
+    return jsonify({"status": "ok", "member_confirmed": True})
+
+
+@app.route("/api/manage/group-tasks/my/<student_id>", methods=["GET"])
+def api_get_my_group_tasks(student_id):
+    """获取学生所在组的任务（学生视角，含决策完成状态）"""
+    tasks = []
+    for gtid, gt in _runtime_store["group_tasks"].items():
+        for gid, conf in gt.get("confirmations", {}).items():
+            if student_id in conf.get("members", []):
+                is_leader = conf.get("leader") == student_id
+                member_cfs = conf.get("member_confirmations", {})
+
+                # 构建成员列表，附上决策完成状态和成绩
+                members_info = []
+                for mid in conf.get("members", []):
+                    # 检查该成员的决策推演完成状态
+                    mp = _runtime_store.get("progress", {}).get(mid, [])
+                    task_progress = next(
+                        (p for p in mp if p.get("task_id") == gtid and p.get("status") == "completed"),
+                        None
+                    )
+                    # 查询成绩
+                    score_val = task_progress.get("score") if task_progress else None
+                    members_info.append({
+                        "student_id": mid,
+                        "name": _get_student_name(mid),
+                        "avatar": _get_student_avatar(mid),
+                        "confirmed": member_cfs.get(mid, False),
+                        "decision_completed": task_progress is not None,
+                        "score": score_val,
+                    })
+
+                # 自身完成状态
+                my_progress = _runtime_store.get("progress", {}).get(student_id, [])
+                my_task_done = any(
+                    p.get("task_id") == gtid and p.get("status") == "completed"
+                    for p in my_progress
+                )
+                my_score = None
+                if my_task_done:
+                    done = next(
+                        (p for p in my_progress if p.get("task_id") == gtid and p.get("status") == "completed"),
+                        None
+                    )
+                    my_score = done.get("score") if done else None
+
+                tasks.append({
+                    "gtask_id": gtid,
+                    "title": gt.get("title", ""),
+                    "scenario_id": gt.get("scenario_id", ""),
+                    "deadline": gt.get("deadline", ""),
+                    "description": gt.get("description", ""),
+                    "created_at": gt.get("created_at", ""),
+                    "status": gt.get("status", ""),
+                    "group_id": gid,
+                    "group_name": conf.get("group_name", ""),
+                    "is_leader": is_leader,
+                    "leader_confirmed": conf.get("leader_confirmed", False),
+                    "leader_name": _get_student_name(conf.get("leader", "")),
+                    "members": members_info,
+                    "my_confirmed": member_cfs.get(student_id, False),
+                    "my_completed": my_task_done,
+                    "my_score": my_score,
+                })
+                break
+    return jsonify({"tasks": tasks})
+
+
+@app.route("/api/manage/unfinished/<class_id>", methods=["GET"])
+def api_get_unfinished(class_id):
+    """获取未完成任务的学生名单"""
+    cls = _runtime_store["classes"].get(class_id)
+    if not cls:
+        return jsonify({"error": "班级不存在"}), 404
+
+    unfinished = []
+    # 检查组任务
+    for gtid, gt in _runtime_store["group_tasks"].items():
+        if gt.get("class_id") != class_id:
+            continue
+        for gid, conf in gt.get("confirmations", {}).items():
+            for mid in conf.get("members", []):
+                member_cfs = conf.get("member_confirmations", {})
+                # 1. 未确认接受任务
+                if not member_cfs.get(mid, False):
+                    unfinished.append({
+                        "student_id": mid,
+                        "name": _get_student_name(mid),
+                        "avatar": _get_student_avatar(mid),
+                        "task_title": gt.get("title", ""),
+                        "task_id": gtid,
+                        "reason": "未确认接受任务" if not conf.get("leader_confirmed") and conf.get("leader") == mid
+                                  else ("组长未确认" if not conf.get("leader_confirmed") else "未确认接受"),
+                        "group_name": conf.get("group_name", ""),
+                        "is_leader": conf.get("leader") == mid,
+                        "deadline": gt.get("deadline", ""),
+                        "type": "confirm",
+                    })
+                else:
+                    # 2. 已确认但未完成决策推演
+                    mp = _runtime_store.get("progress", {}).get(mid, [])
+                    task_done = any(
+                        p.get("task_id") == gtid and p.get("status") == "completed"
+                        for p in mp
+                    )
+                    if not task_done:
+                        unfinished.append({
+                            "student_id": mid,
+                            "name": _get_student_name(mid),
+                            "avatar": _get_student_avatar(mid),
+                            "task_title": gt.get("title", ""),
+                            "task_id": gtid,
+                            "reason": "已确认任务，但尚未完成决策推演",
+                            "group_name": conf.get("group_name", ""),
+                            "is_leader": conf.get("leader") == mid,
+                            "deadline": gt.get("deadline", ""),
+                            "type": "decision",
+                        })
+
+    # 检查个人任务
+    for tid, t in _runtime_store["tasks"].items():
+        if t.get("class_id") != class_id:
+            continue
+        for sid in t.get("assignees", []):
+            progress = _runtime_store.get("progress", {}).get(sid, [])
+            p = next((p for p in progress if p.get("task_id") == tid), None)
+            if not p or p.get("status") != "completed":
+                unfinished.append({
+                    "student_id": sid,
+                    "name": _get_student_name(sid),
+                    "avatar": _get_student_avatar(sid),
+                    "task_title": t.get("title", ""),
+                    "task_id": tid,
+                    "reason": "未提交",
+                    "deadline": t.get("deadline", ""),
+                })
+
+    return jsonify({"unfinished": unfinished, "total": len(unfinished)})
+
+
+# --- 研：案例生成 ---
+@app.route("/api/research/generate", methods=["POST"])
+def api_generate_case():
+    """基于全省物流数据自动生成教学案例"""
+    data = request.get_json() or {}
+    disaster_type = data.get("disaster_type", "earthquake")
+    location = data.get("location", "")
+    difficulty = data.get("difficulty", "medium")  # easy/medium/hard
+
+    # 从物流数据获取仓库和路线信息
+    try:
+        logistics_data = PROVINCE_LOGISTICS
+    except Exception:
+        logistics_data = {}
+
+    warehouses = logistics_data.get("warehouses", [])
+    routes = logistics_data.get("roads", [])
+
+    # 根据难度配置参数
+    difficulty_config = {
+        "easy": {"budget": 80000, "time_limit": 600, "cargo_count": 2},
+        "medium": {"budget": 50000, "time_limit": 300, "cargo_count": 3},
+        "hard": {"budget": 30000, "time_limit": 180, "cargo_count": 5},
+    }
+    config = difficulty_config.get(difficulty, difficulty_config["medium"])
+
+    # 生成案例
+    disaster_names = {
+        "earthquake": "地震", "rainstorm": "暴雨", "typhoon": "台风",
+        "flood": "洪水", "landslide": "山体滑坡", "mudslide": "泥石流"
+    }
+
+    case = {
+        "case_id": f"CASE-{int(time.time())%1000000:06d}",
+        "case_name": f"{location or '四川省'}{disaster_names.get(disaster_type, '自然灾害')}应急运输案例",
+        "disaster_type": disaster_type,
+        "location": location or "四川省",
+        "difficulty": difficulty,
+        "budget": config["budget"],
+        "time_limit": config["time_limit"],
+        "cargo_count": config["cargo_count"],
+        "warehouse_count": len(warehouses) if warehouses else 5,
+        "route_count": len(routes) if routes else 8,
+        "generated_at": time.strftime("%Y-%m-%d %H:%M"),
+        "description": f"在{location or '四川省'}发生{disaster_names.get(disaster_type, '自然灾害')}，"
+                       f"需要紧急运输{config['cargo_count']}批救灾物资。"
+                       f"预算{config['budget']}元，时限{config['time_limit']}秒。"
+                       f"难度：{ {'easy':'初级','medium':'中级','hard':'高级'}[difficulty] }",
+        "data_source": "全省物流信息库",
+    }
+
+    # 存储案例
+    _runtime_store.setdefault("generated_cases", [])
+    _runtime_store["generated_cases"].append(case)
+
+    return jsonify({"status": "ok", "case": case})
+
+
+@app.route("/api/research/cases", methods=["GET"])
+def api_get_cases():
+    """获取已生成的案例列表"""
+    cases = _runtime_store.get("generated_cases", [])
+    return jsonify({"cases": cases})
+
+
+@app.route("/api/research/cases/<case_id>/import", methods=["POST"])
+def api_import_case(case_id):
+    """将生成的案例导入为教学场景"""
+    cases = _runtime_store.get("generated_cases", [])
+    case = next((c for c in cases if c.get("case_id") == case_id), None)
+    if not case:
+        return jsonify({"error": "案例不存在"}), 404
+
+    # 转换为场景格式
+    scenario = {
+        "scenario_id": case["case_id"],
+        "scenario_name": case["case_name"],
+        "disaster": {
+            "disaster_type": case["disaster_type"],
+            "location": case["location"],
+            "severity": case["difficulty"],
+        },
+        "budget": case["budget"],
+        "time_limit": case["time_limit"],
+        "strategy_mode": "time_pressure",
+        "cargos": [
+            {"id": f"C{i+1}", "name": f"救灾物资{i+1}", "weight": 500+i*200, "priority": "P1" if i == 0 else "P2"}
+            for i in range(case["cargo_count"])
+        ],
+        "warehouses": [
+            {"id": f"W{i+1}", "name": f"仓库{i+1}", "lat": 30.6+i*0.1, "lng": 104.0+i*0.05}
+            for i in range(case["warehouse_count"])
+        ],
+        "vehicle_fleet": [
+            {"type": "truck", "capacity": 2000, "cost_per_km": 8, "speed": 60, "count": 3},
+            {"type": "van", "capacity": 800, "cost_per_km": 5, "speed": 80, "count": 2},
+        ],
+    }
+
+    # 保存场景文件
+    scenario_file = SCENARIOS_DIR / f"{scenario['scenario_id']}.json"
+    with open(scenario_file, "w", encoding="utf-8") as f:
+        json.dump(scenario, f, ensure_ascii=False, indent=2)
+
+    return jsonify({"status": "ok", "scenario_id": scenario["scenario_id"]})
+
+
+# --- 建：知识库建设 ---
+_runtime_store.setdefault("knowledge_base", {
+    "entities": [],       # 知识实体
+    "relations": [],      # 关系
+    "data_sources": [],   # 数据源
+    "updates": [],        # 更新日志
+})
+
+@app.route("/api/knowledge/status", methods=["GET"])
+def api_knowledge_status():
+    """知识库状态概览"""
+    kb = _runtime_store["knowledge_base"]
+    return jsonify({
+        "entity_count": len(kb.get("entities", [])),
+        "relation_count": len(kb.get("relations", [])),
+        "source_count": len(kb.get("data_sources", [])),
+        "update_count": len(kb.get("updates", [])),
+        "last_update": kb.get("updates", [{}])[-1].get("time", "") if kb.get("updates") else "",
+        "categories": list(set(e.get("category", "其他") for e in kb.get("entities", []))),
+    })
+
+
+@app.route("/api/knowledge/entities", methods=["GET"])
+def api_knowledge_entities():
+    """知识实体列表"""
+    kb = _runtime_store["knowledge_base"]
+    category = request.args.get("category", "")
+    entities = kb.get("entities", [])
+    if category:
+        entities = [e for e in entities if e.get("category") == category]
+    return jsonify({"entities": entities})
+
+
+@app.route("/api/knowledge/entities", methods=["POST"])
+def api_add_entity():
+    """新增知识实体"""
+    data = request.get_json()
+    entity = {
+        "id": f"ENT-{int(time.time())%1000000:06d}",
+        "name": data.get("name", ""),
+        "category": data.get("category", "其他"),
+        "description": data.get("description", ""),
+        "properties": data.get("properties", {}),
+        "created_at": time.strftime("%Y-%m-%d %H:%M"),
+    }
+    _runtime_store["knowledge_base"]["entities"].append(entity)
+    _runtime_store["knowledge_base"]["updates"].append({
+        "type": "add_entity",
+        "entity": entity["name"],
+        "time": time.strftime("%Y-%m-%d %H:%M"),
+    })
+    return jsonify({"status": "ok", "entity": entity})
+
+
+@app.route("/api/knowledge/sources", methods=["GET"])
+def api_knowledge_sources():
+    """数据源列表"""
+    kb = _runtime_store["knowledge_base"]
+    return jsonify({"sources": kb.get("data_sources", [])})
+
+
+@app.route("/api/knowledge/sources", methods=["POST"])
+def api_add_source():
+    """接入新数据源"""
+    data = request.get_json()
+    source = {
+        "id": f"SRC-{int(time.time())%1000000:06d}",
+        "name": data.get("name", ""),
+        "type": data.get("type", ""),  # api/database/file/manual
+        "url": data.get("url", ""),
+        "status": "connected",
+        "record_count": data.get("record_count", 0),
+        "added_at": time.strftime("%Y-%m-%d %H:%M"),
+    }
+    _runtime_store["knowledge_base"]["data_sources"].append(source)
+    _runtime_store["knowledge_base"]["updates"].append({
+        "type": "add_source",
+        "source": source["name"],
+        "time": time.strftime("%Y-%m-%d %H:%M"),
+    })
+    return jsonify({"status": "ok", "source": source})
+
+
+@app.route("/api/knowledge/graph", methods=["GET"])
+def api_knowledge_graph():
+    """知识图谱数据（节点+边）"""
+    kb = _runtime_store["knowledge_base"]
+    entities = kb.get("entities", [])
+    relations = kb.get("relations", [])
+
+    # 如果没有数据，返回预置的简化知识图谱
+    if not entities:
+        entities = [
+            {"id": "ENT-001", "name": "地震", "category": "灾害", "description": "地壳振动引发的自然灾害"},
+            {"id": "ENT-002", "name": "台风", "category": "灾害", "description": "热带气旋引发的强风暴雨"},
+            {"id": "ENT-003", "name": "暴雨", "category": "灾害", "description": "短时间内大量降雨"},
+            {"id": "ENT-004", "name": "洪涝灾害", "category": "灾害", "description": "暴雨导致河流泛滥成灾"},
+            {"id": "ENT-005", "name": "泥石流", "category": "灾害", "description": "暴雨引发的山洪泥石流"},
+            {"id": "ENT-006", "name": "森林火灾", "category": "灾害", "description": "失去控制的林火灾害"},
+            {"id": "ENT-007", "name": "公路运输", "category": "运输方式", "description": "货车公路物资运输"},
+            {"id": "ENT-008", "name": "无人机运输", "category": "运输方式", "description": "无人飞行器空投物资"},
+            {"id": "ENT-009", "name": "铁路运输", "category": "运输方式", "description": "铁路网大宗物资运输"},
+            {"id": "ENT-010", "name": "应急物资储备库", "category": "基础设施", "description": "存储救灾应急物资的仓库"},
+            {"id": "ENT-011", "name": "应急避难场所", "category": "基础设施", "description": "安置受灾群众的场所"},
+            {"id": "ENT-012", "name": "物资调度", "category": "决策", "description": "应急物资分配与调度决策"},
+            {"id": "ENT-013", "name": "路径规划", "category": "决策", "description": "选择最优运输路径"},
+            {"id": "ENT-014", "name": "风险评估", "category": "决策", "description": "灾害风险评估与控制"},
+            {"id": "ENT-015", "name": "应急预案", "category": "决策", "description": "预先制定的应对方案"},
+            {"id": "ENT-016", "name": "应急管理部", "category": "组织", "description": "国家应急管理主管部门"},
+            {"id": "ENT-017", "name": "消防救援队伍", "category": "组织", "description": "抢险救援的专业力量"},
+            {"id": "ENT-018", "name": "GIS地理信息系统", "category": "技术", "description": "灾害空间分析与管理"},
+            {"id": "ENT-019", "name": "遥感监测", "category": "技术", "description": "卫星遥感灾害监测"},
+            {"id": "ENT-020", "name": "AI智能决策", "category": "技术", "description": "AI辅助灾害应急决策"},
+        ]
+        relations = [
+            {"source": "ENT-001", "target": "ENT-010", "relation": "破坏"},
+            {"source": "ENT-001", "target": "ENT-012", "relation": "触发"},
+            {"source": "ENT-002", "target": "ENT-003", "relation": "伴随"},
+            {"source": "ENT-002", "target": "ENT-012", "relation": "触发"},
+            {"source": "ENT-003", "target": "ENT-004", "relation": "引发"},
+            {"source": "ENT-003", "target": "ENT-005", "relation": "引发"},
+            {"source": "ENT-004", "target": "ENT-012", "relation": "触发"},
+            {"source": "ENT-005", "target": "ENT-007", "relation": "阻断"},
+            {"source": "ENT-006", "target": "ENT-017", "relation": "需应对"},
+            {"source": "ENT-007", "target": "ENT-012", "relation": "执行"},
+            {"source": "ENT-007", "target": "ENT-013", "relation": "依赖"},
+            {"source": "ENT-008", "target": "ENT-012", "relation": "辅助"},
+            {"source": "ENT-009", "target": "ENT-012", "relation": "执行"},
+            {"source": "ENT-010", "target": "ENT-011", "relation": "供应"},
+            {"source": "ENT-012", "target": "ENT-014", "relation": "基于"},
+            {"source": "ENT-012", "target": "ENT-013", "relation": "采用"},
+            {"source": "ENT-013", "target": "ENT-018", "relation": "依赖"},
+            {"source": "ENT-014", "target": "ENT-015", "relation": "驱动"},
+            {"source": "ENT-015", "target": "ENT-016", "relation": "由…制定"},
+            {"source": "ENT-016", "target": "ENT-017", "relation": "指挥"},
+            {"source": "ENT-018", "target": "ENT-014", "relation": "支持"},
+            {"source": "ENT-019", "target": "ENT-018", "relation": "提供数据"},
+            {"source": "ENT-020", "target": "ENT-012", "relation": "赋能"},
+        ]
+        kb["entities"] = entities
+        kb["relations"] = relations
+
+    return jsonify({
+        "nodes": [{"id": e["id"], "name": e["name"], "category": e.get("category", ""),
+                    "description": e.get("description", "")} for e in entities],
+        "edges": [{"source": r["source"], "target": r["target"], "relation": r.get("relation", "")} for r in relations],
+    })
+
+
+@app.route("/api/knowledge/updates", methods=["GET"])
+def api_knowledge_updates():
+    """知识库更新日志"""
+    kb = _runtime_store["knowledge_base"]
+    updates = kb.get("updates", [])[-20:]  # 最近20条
+    updates.reverse()
+    return jsonify({"updates": updates})
 
 
 # ============================================================
@@ -704,6 +1825,7 @@ def submit_student_plan():
     student_id = data.get("student_id", "STU-001")
     actions = data.get("actions", [])
     submit_time = data.get("submit_time_sec", 0)
+    gtask_id = data.get("gtask_id")  # 组任务ID
     
     # 记录提交
     behavior_tracker.record_submit(session_id, actions)
@@ -778,7 +1900,66 @@ def submit_student_plan():
             "optimal_plan": optimal_plan.to_dict(),
         }
         
+        # ===== 救灾决策模式: 额外返回安全+速度考核评分 =====
+        strategy_mode = scenario_data.get("strategy_config", {}).get("mode", "time_pressure")
+        if strategy_mode == "emergency_relief":
+            from emergency_decision.strategy_adaptations import EmergencyReliefAssessor
+            assessor = EmergencyReliefAssessor()
+            assessment = assessor.assess(
+                student_actions=actions,
+                optimal_plan=optimal_plan,
+                scenario=scenario,
+                submit_time_sec=submit_time,
+            )
+            result["emergency_assessment"] = assessment.to_dict()
+        
         _runtime_store["results"][session_id] = result
+
+        # ===== 同步更新组任务进度 =====
+        if gtask_id:
+            from datetime import datetime as dt
+            # 1. 写入个人进度记录
+            _runtime_store.setdefault("progress", {})
+            if student_id not in _runtime_store["progress"]:
+                _runtime_store["progress"][student_id] = []
+            # 避免重复记录
+            existing = [p for p in _runtime_store["progress"][student_id]
+                        if p.get("task_id") == gtask_id]
+            if not existing:
+                _runtime_store["progress"][student_id].append({
+                    "task_id": gtask_id,
+                    "type": "group_task",
+                    "status": "completed",
+                    "submit_time": dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "score": profile.to_dict()["overall"]["score"],
+                    "session_id": session_id,
+                    "scenario_id": scenario_id,
+                })
+
+            # 2. 检查整组成员是否全部完成 → 更新组任务状态
+            gt = _runtime_store["group_tasks"].get(gtask_id)
+            if gt:
+                # 收集所有成员列表
+                all_members = set()
+                for gid, conf in gt.get("confirmations", {}).items():
+                    for mid in conf.get("members", []):
+                        all_members.add(mid)
+
+                # 检查每个成员的 progress 是否都有该任务的 completed 记录
+                all_completed = True
+                for mid in all_members:
+                    member_progress = _runtime_store["progress"].get(mid, [])
+                    found = any(
+                        p.get("task_id") == gtask_id and p.get("status") == "completed"
+                        for p in member_progress
+                    )
+                    if not found:
+                        all_completed = False
+                        break
+
+                if all_completed:
+                    gt["status"] = "completed"
+
         return jsonify(result)
     except Exception as e:
         import traceback
@@ -815,6 +1996,33 @@ def get_growth(student_id):
 # ============================================================
 # 教师后台 API
 # ============================================================
+
+@app.route("/api/my-scores/<student_id>", methods=["GET"])
+def my_scores(student_id):
+    """学生查看自己的成绩记录"""
+    profiles = _runtime_store["profiles"].get(student_id, [])
+    score_list = []
+    for p in profiles:
+        overall = p.get("overall", {})
+        score_list.append({
+            "session_id": p.get("session_id", ""),
+            "scenario_id": p.get("scenario_id", ""),
+            "score": overall.get("score", 0),
+            "level": overall.get("level", "D"),
+            "level_desc": overall.get("level_desc", ""),
+            "dimensions": p.get("dimensions", {}),
+            "radar_data": p.get("radar_data", {}),
+            "created_at": p.get("created_at", ""),
+        })
+    # 平均分
+    avg_score = round(sum(s["score"] for s in score_list) / len(score_list), 1) if score_list else 0
+    return jsonify({
+        "student_id": student_id,
+        "total_sessions": len(score_list),
+        "avg_score": avg_score,
+        "scores": score_list,
+    })
+
 
 @app.route("/api/teacher/dashboard", methods=["GET"])
 def teacher_dashboard():
@@ -1005,12 +2213,14 @@ def _generate_scenario_from_earthquake(eq, params) -> dict:
         })
 
     # 车辆
+    province_name = params.get("province", "")
+    plate_prefix = get_license_plate_prefix(province_name)
     vehicles = []
     for i in range(4):
         n = nodes[i % len(nodes)]
         vehicles.append({
             "vehicle_id": f"V-EQ{i+1:02d}",
-            "license_plate": f"川A{10000+i}",
+            "license_plate": f"{plate_prefix}A{10000+i}",
             "vehicle_type": "box_truck",
             "capacity_tons": 10,
             "capacity_m3": 40,
@@ -1261,9 +2471,9 @@ def import_alert_as_scenario():
 
 def _generate_scenario_from_typhoon(detail, params) -> dict:
     """根据真实台风数据生成教学场景JSON"""
-    lat = params["latitude"] or 25.0
-    lng = params["longitude"] or 130.0
-    radius = params["influence_radius_km"]
+    lat = params.get("latitude") or 25.0
+    lng = params.get("longitude") or 130.0
+    radius = max(params.get("influence_radius_km", 350), 200)
     name = params.get("chinese_name", "") or params.get("english_name", "")
 
     nodes = [
@@ -1280,10 +2490,12 @@ def _generate_scenario_from_typhoon(detail, params) -> dict:
         {"road_id": "R-T04", "road_name": "台风中心-港口", "from_node": "NODE-TF00", "to_node": "NODE-TF01", "road_type": "highway", "is_bidirectional": True, "distance_km": 100, "speed_limit_kmh": 60, "current_travel_time_min": 100, "road_condition": "blocked", "has_bridge": True, "has_tunnel": False, "capacity_per_hour": 500, "toll_cost": 50, "fuel_cost_per_km": 0.8},
     ]
 
+    province_name = params.get("province", "")
+    plate_prefix = get_license_plate_prefix(province_name)
     vehicles = []
     for i, n in enumerate(nodes):
         vehicles.append({
-            "vehicle_id": f"V-TF{i+1:02d}", "license_plate": f"闽B{20000+i}", "vehicle_type": "box_truck",
+            "vehicle_id": f"V-TF{i+1:02d}", "license_plate": f"{plate_prefix}B{20000+i}", "vehicle_type": "box_truck",
             "capacity_tons": 12, "capacity_m3": 45, "current_location_node": n["node_id"],
             "current_lat": n["lat"], "current_lng": n["lng"], "status": "idle",
             "current_cargo_ids": [], "current_load_tons": 0, "current_load_m3": 0,
@@ -1337,9 +2549,9 @@ def _generate_scenario_from_typhoon(detail, params) -> dict:
 
 def _generate_scenario_from_alert(alert, params) -> dict:
     """根据天气预警数据生成教学场景JSON"""
-    lat = params["latitude"] or 34.0
-    lng = params["longitude"] or 113.0
-    radius = params["influence_radius_km"]
+    lat = params.get("latitude") or 34.0
+    lng = params.get("longitude") or 113.0
+    radius = max(params.get("influence_radius_km", 150), 150)  # 确保足够覆盖所有节点
     alert_type = params.get("alert_type", "暴雨")
     disaster_type = params.get("disaster_type", "rainstorm")
     title = params.get("title", "")
@@ -1358,10 +2570,13 @@ def _generate_scenario_from_alert(alert, params) -> dict:
         {"road_id": "R-A04", "road_name": "东部-南部", "from_node": "NODE-AL01", "to_node": "NODE-AL02", "road_type": "highway", "is_bidirectional": True, "distance_km": 100, "speed_limit_kmh": 80, "current_travel_time_min": 75, "road_condition": "blocked", "has_bridge": True, "has_tunnel": False, "capacity_per_hour": 1000, "toll_cost": 50, "fuel_cost_per_km": 0.8},
     ]
 
+    province_name = params.get("province", "")
+    plate_prefix = get_license_plate_prefix(province_name)
+
     vehicles = []
     for i, n in enumerate(nodes):
         vehicles.append({
-            "vehicle_id": f"V-AL{i+1:02d}", "license_plate": f"豫A{30000+i}", "vehicle_type": "box_truck",
+            "vehicle_id": f"V-AL{i+1:02d}", "license_plate": f"{plate_prefix}A{30000+i}", "vehicle_type": "box_truck",
             "capacity_tons": 10, "capacity_m3": 40, "current_location_node": n["node_id"],
             "current_lat": n["lat"], "current_lng": n["lng"], "status": "idle",
             "current_cargo_ids": [], "current_load_tons": 0, "current_load_m3": 0,
@@ -1380,16 +2595,87 @@ def _generate_scenario_from_alert(alert, params) -> dict:
     ]
 
     scenario_id = f"RT-AL-{alert.get('alert_id', 'UNK').replace('SAMPLE-', '').replace('WC-', '')}"
+
+    # 根据灾害类型生成对应的灾害数据
+    disaster_field = {
+        "disaster_id": f"DIS-AL-{alert.get('alert_id', 'UNK')}",
+        "disaster_type": disaster_type,
+        "center_lat": lat, "center_lng": lng,
+        "influence_radius_km": radius,
+        "affected_areas": [params.get("province", "")],
+        "occurrence_time": params.get("publish_time", ""),
+    }
+
+    if disaster_type == "earthquake":
+        disaster_field["earthquake"] = {
+            "epicenter_city": params.get("province", ""), "epicenter_lat": lat, "epicenter_lng": lng,
+            "magnitude": 6.5, "depth_km": 10, "intensity": 8, "occur_time": params.get("publish_time", ""),
+            "influence_radius_km": radius, "affected_areas": [params.get("province", "")],
+            "severity_level": "severe", "wave_arrival_times": [],
+        }
+    elif disaster_type == "rainstorm":
+        disaster_field["rainstorm"] = {
+            "center_city": params.get("province", ""), "center_lat": lat, "center_lng": lng,
+            "rainfall_mm": 200 if alert_type in ("暴雨", "洪水") else 100,
+            "affected_duration_hours": 24,
+            "affected_areas": [params.get("province", "")],
+            "waterlogged_roads": ["R-A04"], "river_water_level": [],
+        }
+    elif disaster_type == "typhoon":
+        disaster_field["typhoon"] = {
+            "typhoon_name": alert_type if alert_type == "台风" else "大风灾害",
+            "center_lat": lat, "center_lng": lng,
+            "wind_force_level": 12 if alert_type == "台风" else 8,
+            "moving_speed_kmh": 25, "moving_direction": "NW", "landing_time": params.get("publish_time", ""),
+            "landing_location": params.get("province", ""), "influence_radius_km": radius,
+            "port_closure": True, "airport_closure": alert_type == "台风",
+            "affected_areas": [params.get("province", "")],
+        }
+    elif disaster_type == "landslide":
+        disaster_field["landslide"] = {
+            "location_city": params.get("province", ""), "location_lat": lat, "location_lng": lng,
+            "scale_level": 3, "blocked_roads": ["R-A04"],
+            "estimated_clear_hours": 48,
+            "affected_areas": [params.get("province", "")],
+        }
+    elif disaster_type == "snowstorm":
+        disaster_field["snowstorm"] = {
+            "center_city": params.get("province", ""), "center_lat": lat, "center_lng": lng,
+            "snowfall_cm": 30, "temperature_min": -15,
+            "affected_duration_hours": 48,
+            "affected_areas": [params.get("province", "")],
+        }
+    elif disaster_type == "sandstorm":
+        disaster_field["sandstorm"] = {
+            "center_city": params.get("province", ""), "center_lat": lat, "center_lng": lng,
+            "wind_force_level": 9, "visibility_m": 500,
+            "affected_duration_hours": 12,
+            "affected_areas": [params.get("province", "")],
+        }
+    elif disaster_type == "wildfire":
+        disaster_field["wildfire"] = {
+            "center_city": params.get("province", ""), "center_lat": lat, "center_lng": lng,
+            "fire_level": 3, "burned_area_ha": 500,
+            "affected_areas": [params.get("province", "")],
+        }
+    elif disaster_type == "tsunami":
+        disaster_field["tsunami"] = {
+            "center_city": params.get("province", ""), "center_lat": lat, "center_lng": lng,
+            "wave_height_m": 5, "warning_level": "red",
+            "affected_areas": [params.get("province", "")],
+        }
+    else:
+        disaster_field["rainstorm"] = {
+            "center_city": params.get("province", ""), "center_lat": lat, "center_lng": lng,
+            "rainfall_mm": 100, "affected_duration_hours": 24,
+            "affected_areas": [params.get("province", "")], "waterlogged_roads": ["R-A04"], "river_water_level": [],
+        }
+
     return {
         "scenario_id": scenario_id,
         "scenario_name": f"真实预警场景 - {alert_type}{params.get('level', '')}预警",
         "scenario_description": f"基于国家气象预警信息。预警标题: {title}。{params.get('severity', '')}",
-        "disaster": {
-            "disaster_id": f"DIS-AL-{alert.get('alert_id', 'UNK')}", "disaster_type": disaster_type,
-            "center_lat": lat, "center_lng": lng, "influence_radius_km": radius,
-            "affected_areas": [params.get("province", "")], "occurrence_time": params.get("publish_time", ""),
-            "rainstorm": {"center_city": params.get("province", ""), "center_lat": lat, "center_lng": lng, "rainfall_mm": 200 if alert_type == "暴雨" else 0, "affected_duration_hours": 24, "affected_areas": [params.get("province", "")], "waterlogged_roads": ["R-A04"], "river_water_level": []} if disaster_type == "rainstorm" else None,
-        },
+        "disaster": disaster_field,
         "logistics_network": {"nodes": nodes, "roads": roads},
         "vehicle_fleet": vehicles, "warehouses": warehouses, "cargo_manifest": cargos,
         "evaluation": {
@@ -1467,17 +2753,43 @@ def logistics_query():
 COMPANY_INFO = {
     "company_name": "安迅达物流集团",
     "short_name": "安迅达",
-    "english_name": "Anxunda Logistics Group",
-    "logo": "🚚",
+    "english_name": "Anxunda Emergency Logistics Group",
+    "logo": "🚛",
     "founded": "2015",
     "headquarters": "成都",
-    "description": "西南地区领先的第三方综合物流服务商，专注应急物流、冷链物流、干线运输与仓储配送",
+    "description": "西南地区领先的第三方综合物流服务商。2019年与四川省应急管理厅签订战略合作协议，正式纳入【应急运力备选库】，承接政府采购救灾物资运输任务。专注应急物流、冷链物流、干线运输与仓储配送，在地震、泥石流等灾害场景下具备快速响应能力。",
     "fleet_size": 186,
     "warehouse_count": 12,
+    "drone_count": 24,
+    "drone_models": [
+        {"model": "大疆FlyCart 30", "count": 12, "payload_kg": 30, "range_km": 28, "use": "末端救灾物资空投"},
+        {"model": "丰翼方舟M5", "count": 8, "payload_kg": 50, "range_km": 20, "use": "道路中断时跨区域投送"},
+        {"model": "自研XDA-100", "count": 4, "payload_kg": 100, "range_km": 50, "use": "重型救灾设备运输"},
+    ],
     "service_cities": 48,
     "employees": 1200,
-    "business_scope": ["干线运输", "城配配送", "冷链物流", "仓储管理", "应急物流", "跨境物流"],
-    "certifications": ["ISO9001质量认证", "A级物流企业", "冷链物流资质", "危险品运输许可"],
+    "business_scope": ["干线运输", "城配配送", "冷链物流", "仓储管理", "应急物流", "跨境物流", "无人机空投"],
+    "emergency_role": {
+        "title": "应急运力备选库签约企业",
+        "contract_level": "省级应急运力备选库（一级响应）",
+        "contract_signing": "2019年与四川省应急管理厅签订",
+        "responsibilities": [
+            "承接政府采购救灾物资运输",
+            "灾害期间24小时内调配车辆/无人机到达指定区域",
+            "协助应急管理部门进行物资中转与分发",
+            "提供应急仓储与临时中转服务",
+        ],
+        "activation_count": 17,
+        "latest_activation": "2025年8月 参与四川某地泥石流救灾物资运输",
+    },
+    "certifications": [
+        "ISO9001质量认证",
+        "A级物流企业",
+        "冷链物流资质",
+        "危险品运输许可",
+        "应急管理部应急运力备选库资质",
+        "无人机运营合格证",
+    ],
     "annual_revenue": "8.6亿",
     "coverage": ["四川", "云南", "贵州", "重庆", "西藏"],
 }
@@ -1494,28 +2806,35 @@ def company_info():
 
 @app.route("/api/company/orders", methods=["GET"])
 def company_orders():
-    """获取企业当前动态订单列表"""
+    """获取企业当前动态订单列表（含普通订单+救灾物资订单）"""
     now = datetime.now()
     hour = now.hour
     minute = now.minute
 
     # 基于当前时间生成动态状态
     orders = []
-    routes = [
-        {"order_no": f"AXD-{now.strftime('%Y%m%d')}-001", "from": "成都龙泉仓", "to": "昆明呈贡仓", "from_lat": 30.55, "from_lng": 104.15, "to_lat": 24.89, "to_lng": 102.80, "cargo": "电子配件 12吨", "vehicle": "川A·L8865", "distance": 1100, "revenue": 8800},
-        {"order_no": f"AXD-{now.strftime('%Y%m%d')}-002", "from": "重庆果园港", "to": "贵阳龙洞堡", "from_lat": 29.65, "from_lng": 106.60, "to_lat": 26.58, "to_lng": 106.80, "cargo": "建材物资 25吨", "vehicle": "渝B·K3321", "distance": 380, "revenue": 4500},
-        {"order_no": f"AXD-{now.strftime('%Y%m%d')}-003", "from": "昆明空港", "to": "西昌中转", "from_lat": 25.00, "from_lng": 102.93, "to_lat": 27.90, "to_lng": 102.27, "cargo": "鲜花冷链 8吨", "vehicle": "云A·X7788", "distance": 350, "revenue": 6200},
-        {"order_no": f"AXD-{now.strftime('%Y%m%d')}-004", "from": "成都双流", "to": "攀枝花", "from_lat": 30.58, "from_lng": 103.95, "to_lat": 26.58, "to_lng": 101.72, "cargo": "医疗器械 3吨", "vehicle": "川A·M5566", "distance": 550, "revenue": 7500},
-        {"order_no": f"AXD-{now.strftime('%Y%m%d')}-005", "from": "贵阳改貌", "to": "重庆空港", "from_lat": 26.50, "from_lng": 106.73, "to_lat": 29.72, "to_lng": 106.64, "cargo": "食品饮料 15吨", "vehicle": "贵A·F9988", "distance": 380, "revenue": 3800},
-        {"order_no": f"AXD-{now.strftime('%Y%m%d')}-006", "from": "成都龙泉仓", "to": "大理", "from_lat": 30.55, "from_lng": 104.15, "to_lat": 25.61, "to_lng": 100.23, "cargo": "日用百货 18吨", "vehicle": "川A·L2233", "distance": 850, "revenue": 6800},
-        {"order_no": f"AXD-{now.strftime('%Y%m%d')}-007", "from": "昆明呈贡", "to": "曲靖", "from_lat": 24.89, "from_lng": 102.80, "to_lat": 25.49, "to_lng": 103.80, "cargo": "快递包裹 5吨", "vehicle": "云A·X1122", "distance": 130, "revenue": 1800},
-        {"order_no": f"AXD-{now.strftime('%Y%m%d')}-008", "from": "重庆果园港", "to": "绵阳", "from_lat": 29.65, "from_lng": 106.60, "to_lat": 31.47, "to_lng": 104.68, "cargo": "机械设备 20吨", "vehicle": "渝B·K7766", "distance": 320, "revenue": 5200},
+
+    # 普通物资订单
+    normal_routes = [
+        {"order_no": f"AXD-{now.strftime('%Y%m%d')}-001", "from": "成都龙泉仓", "to": "昆明呈贡仓", "from_lat": 30.55, "from_lng": 104.15, "to_lat": 24.89, "to_lng": 102.80, "cargo": "电子配件 12吨", "vehicle": "川A·L8865", "distance": 1100, "revenue": 8800, "order_type": "normal"},
+        {"order_no": f"AXD-{now.strftime('%Y%m%d')}-002", "from": "重庆果园港", "to": "贵阳龙洞堡", "from_lat": 29.65, "from_lng": 106.60, "to_lat": 26.58, "to_lng": 106.80, "cargo": "建材物资 25吨", "vehicle": "渝B·K3321", "distance": 380, "revenue": 4500, "order_type": "normal"},
+        {"order_no": f"AXD-{now.strftime('%Y%m%d')}-003", "from": "昆明空港", "to": "西昌中转", "from_lat": 25.00, "from_lng": 102.93, "to_lat": 27.90, "to_lng": 102.27, "cargo": "鲜花冷链 8吨", "vehicle": "云A·X7788", "distance": 350, "revenue": 6200, "order_type": "normal"},
+        {"order_no": f"AXD-{now.strftime('%Y%m%d')}-004", "from": "成都双流", "to": "攀枝花", "from_lat": 30.58, "from_lng": 103.95, "to_lat": 26.58, "to_lng": 101.72, "cargo": "医疗器械 3吨", "vehicle": "川A·M5566", "distance": 550, "revenue": 7500, "order_type": "normal"},
+        {"order_no": f"AXD-{now.strftime('%Y%m%d')}-005", "from": "贵阳改貌", "to": "重庆空港", "from_lat": 26.50, "from_lng": 106.73, "to_lat": 29.72, "to_lng": 106.64, "cargo": "食品饮料 15吨", "vehicle": "贵A·F9988", "distance": 380, "revenue": 3800, "order_type": "normal"},
+        {"order_no": f"AXD-{now.strftime('%Y%m%d')}-006", "from": "成都龙泉仓", "to": "大理", "from_lat": 30.55, "from_lng": 104.15, "to_lat": 25.61, "to_lng": 100.23, "cargo": "日用百货 18吨", "vehicle": "川A·L2233", "distance": 850, "revenue": 6800, "order_type": "normal"},
     ]
 
-    statuses = ["运输中", "已发车", "运输中", "运输中", "已装车", "运输中", "已送达", "运输中"]
-    progresses = []
+    # 救灾物资订单（政府采购/应急管理部门调拨）
+    emergency_routes = [
+        {"order_no": f"EMR-{now.strftime('%Y%m%d')}-001", "from": "成都应急仓", "to": "甘孜灾区", "from_lat": 30.55, "from_lng": 104.15, "to_lat": 30.05, "to_lng": 101.96, "cargo": "救灾帐篷 200顶", "vehicle": "川A·EM01", "distance": 420, "revenue": 0, "order_type": "emergency", "dispatch_source": "省应急管理厅调拨", "priority": "P1-紧急"},
+        {"order_no": f"EMR-{now.strftime('%Y%m%d')}-002", "from": "成都应急仓", "to": "阿坝灾区", "from_lat": 30.55, "from_lng": 104.15, "to_lat": 31.91, "to_lng": 102.22, "cargo": "饮用水5吨+食品3吨", "vehicle": "川A·EM02", "distance": 350, "revenue": 0, "order_type": "emergency", "dispatch_source": "省应急管理厅调拨", "priority": "P1-紧急"},
+        {"order_no": f"EMR-{now.strftime('%Y%m%d')}-003", "from": "昆明应急仓", "to": "昭通灾区", "from_lat": 25.04, "from_lng": 102.71, "to_lat": 27.34, "to_lng": 103.72, "cargo": "棉被500床+折叠床100张", "vehicle": "无人机编队XDA-100×2", "distance": 280, "revenue": 0, "order_type": "emergency", "dispatch_source": "云南省应急厅调拨", "priority": "P1-紧急", "is_drone": True},
+        {"order_no": f"EMR-{now.strftime('%Y%m%d')}-004", "from": "重庆应急仓", "to": "黔江灾区", "from_lat": 29.65, "from_lng": 106.60, "to_lat": 29.53, "to_lng": 108.77, "cargo": "发电机组2台+燃油1吨", "vehicle": "渝B·EM03", "distance": 260, "revenue": 0, "order_type": "emergency", "dispatch_source": "重庆市应急局调拨", "priority": "P2-加急"},
+    ]
 
-    for i, o in enumerate(routes):
+    all_routes = normal_routes + emergency_routes
+
+    for i, o in enumerate(all_routes):
         # 动态进度：基于当前分钟数模拟
         progress = ((hour * 60 + minute + i * 17) % 100) / 100
         if progress > 0.95:
@@ -1531,7 +2850,7 @@ def company_orders():
         cur_lat = o["from_lat"] + (o["to_lat"] - o["from_lat"]) * progress
         cur_lng = o["from_lng"] + (o["to_lng"] - o["from_lng"]) * progress
 
-        orders.append({
+        order_data = {
             **o,
             "status": status,
             "progress": round(progress * 100, 1),
@@ -1539,11 +2858,23 @@ def company_orders():
             "current_lng": round(cur_lng, 4),
             "eta_hours": round((1 - progress) * (o["distance"] / 70), 1),
             "updated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
-        })
+        }
+
+        # 救灾订单增加安全考核分
+        if o.get("order_type") == "emergency":
+            order_data["safety_score"] = 92 + (i % 8)
+            order_data["speed_score"] = 88 + (i % 7)
+            order_data["is_drone"] = o.get("is_drone", False)
+
+        orders.append(order_data)
 
     total_revenue = sum(o["revenue"] for o in orders)
     active = sum(1 for o in orders if o["status"] == "运输中")
     delivered = sum(1 for o in orders if o["status"] == "已送达")
+
+    # 分类统计
+    normal_orders = [o for o in orders if o.get("order_type") == "normal"]
+    emergency_orders = [o for o in orders if o.get("order_type") == "emergency"]
 
     return jsonify({
         "orders": orders,
@@ -1552,15 +2883,255 @@ def company_orders():
             "active_orders": active,
             "delivered_orders": delivered,
             "total_revenue": total_revenue,
-            "total_cargo_tons": sum(int(o["cargo"].split()[1].replace("吨", "")) for o in orders if "吨" in o["cargo"]),
+            "normal_orders": len(normal_orders),
+            "emergency_orders": len(emergency_orders),
+            "emergency_active": sum(1 for o in emergency_orders if o["status"] == "运输中"),
         },
         "updated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
     })
 
 
 # ============================================================
-# 辅助函数
+# 救灾物资运送考核 API
 # ============================================================
+
+@app.route("/api/emergency-relief/assess", methods=["POST"])
+def emergency_relief_assess():
+    """救灾决策模式评分 - 考核安全与速度双维度"""
+    data = request.get_json()
+    actions = data.get("actions", [])
+    submit_time = data.get("submit_time_sec", 0)
+    optimal_plan_data = data.get("optimal_plan", {})
+    scenario_data = data.get("scenario_data")
+    
+    if not scenario_data:
+        for f in SCENARIOS_DIR.glob("*.json"):
+            with open(f, "r", encoding="utf-8") as fh:
+                d = json.load(fh)
+            if d.get("scenario_id") == data.get("scenario_id") or f.stem == data.get("scenario_id"):
+                scenario_data = d
+                break
+    
+    if not scenario_data:
+        return jsonify({"error": "场景数据缺失"}), 400
+    
+    try:
+        scenario = load_scenario_from_dict(scenario_data)
+        optimal_plan = engine.solve(scenario)
+        
+        from emergency_decision.strategy_adaptations import EmergencyReliefAssessor
+        assessor = EmergencyReliefAssessor()
+        assessment = assessor.assess(
+            student_actions=actions,
+            optimal_plan=optimal_plan,
+            scenario=scenario,
+            submit_time_sec=submit_time,
+        )
+        
+        return jsonify({
+            "assessment": assessment.to_dict(),
+            "optimal_plan": optimal_plan.to_dict(),
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+
+
+@app.route("/api/emergency/assessment", methods=["GET"])
+def emergency_assessment():
+    """救灾物资运送模式考核（安全+速度因素）"""
+    now = datetime.now()
+
+    # 考核维度定义
+    dimensions = {
+        "safety": {
+            "name": "安全维度",
+            "weight": 0.5,
+            "factors": [
+                {"id": "route_safety", "name": "路线安全评估", "desc": "路线地质灾害风险、道路状况评估", "max_score": 25},
+                {"id": "cargo_secure", "name": "货物固定与防护", "desc": "救灾物资装卸、固定、防潮防震措施", "max_score": 25},
+                {"id": "vehicle_condition", "name": "车辆/无人机状态", "desc": "运输工具安全检查、应急装备配备", "max_score": 25},
+                {"id": "driver_training", "name": "驾驶员/操作员资质", "desc": "应急运输培训记录、持证情况", "max_score": 25},
+            ],
+        },
+        "speed": {
+            "name": "速度维度",
+            "weight": 0.5,
+            "factors": [
+                {"id": "response_time", "name": "响应时效", "desc": "从接令到出库装车的时间", "max_score": 25},
+                {"id": "route_optimization", "name": "路线优化", "desc": "最短/最安全路径规划能力", "max_score": 25},
+                {"id": "transfer_efficiency", "name": "中转效率", "desc": "中转站货物分拨效率", "max_score": 25},
+                {"id": "delivery_speed", "name": "末端送达速度", "desc": "最后一段配送时效", "max_score": 25},
+            ],
+        },
+    }
+
+    # 模拟历史考核记录
+    history = []
+    for i in range(5, 0, -1):
+        dt = now - timedelta(days=i * 7)
+        safety_score = 82 + (i * 3) % 15
+        speed_score = 78 + (i * 5) % 20
+        total = round(safety_score * 0.5 + speed_score * 0.5, 1)
+        history.append({
+            "date": dt.strftime("%Y-%m-%d"),
+            "scenario": f"救灾物资运输考核 #{6-i}",
+            "safety_score": safety_score,
+            "speed_score": speed_score,
+            "total_score": total,
+            "grade": "A" if total >= 85 else "B" if total >= 70 else "C",
+            "issues": [] if total >= 85 else ["路线选择需优化", "中转效率待提升"],
+        })
+
+    # 当前考核标准
+    standards = {
+        "excellent": {"min_score": 90, "desc": "卓越 - 可优先承接P1级救灾运输任务"},
+        "good": {"min_score": 80, "desc": "优秀 - 可承接常规救灾运输任务"},
+        "qualified": {"min_score": 70, "desc": "合格 - 需在督导下执行救灾运输"},
+        "unqualified": {"min_score": 0, "desc": "不合格 - 暂停救灾运输资质"},
+    }
+
+    # 最新综合评分
+    latest = history[0] if history else {"safety_score": 0, "speed_score": 0, "total_score": 0}
+    grade = "A" if latest["total_score"] >= 90 else "B" if latest["total_score"] >= 80 else "C" if latest["total_score"] >= 70 else "D"
+
+    return jsonify({
+        "dimensions": dimensions,
+        "latest_score": {
+            "safety_score": latest["safety_score"],
+            "speed_score": latest["speed_score"],
+            "total_score": latest["total_score"],
+            "grade": grade,
+            "assessment_date": now.strftime("%Y-%m-%d"),
+            "assessor": "省应急管理厅应急运输考核组",
+        },
+        "history": history,
+        "standards": standards,
+        "recommendation": "建议继续加强路线安全评估和中转效率提升" if latest["total_score"] < 90 else "继续保持优秀表现，可优先承接紧急任务",
+    })
+
+
+# ============================================================
+# 应急管理部信息查阅推送模块 API
+# ============================================================
+
+# 应急管理部信息分类与内容
+MEM_INFO_DATA = {
+    "categories": [
+        {"id": "notices", "name": "通知公告", "icon": "📢", "desc": "应急管理部最新通知与公告"},
+        {"id": "policies", "name": "政策法规", "icon": "📋", "desc": "应急管理与防灾减灾政策法规"},
+        {"id": "news", "name": "应急要闻", "icon": "📰", "desc": "全国应急救援工作动态"},
+        {"id": "warnings", "name": "预警信息", "icon": "🚨", "desc": "自然灾害预警信息发布"},
+        {"id": "earthquake", "name": "地震速报", "icon": "🌏", "desc": "中国地震台网正式速报"},
+        {"id": "prevention", "name": "防灾减灾", "icon": "🛡️", "desc": "防灾减灾知识与科普教育"},
+    ],
+    "items": [
+        {
+            "id": "MEM-001", "category": "notices", "title": "关于做好2026年主汛期应急运输保障工作的通知",
+            "source": "应急管理部", "date": "2026-07-15", "url": "https://www.mem.gov.cn/",
+            "summary": "要求各级应急管理部门做好主汛期应急运输保障工作，确保救灾物资及时到位。重点强化应急运力备选库管理，完善政企协同机制。",
+            "tags": ["应急运输", "主汛期", "救灾物资"],
+        },
+        {
+            "id": "MEM-002", "category": "policies", "title": "《应急运力备选库管理办法（2026年修订）》",
+            "source": "应急管理部", "date": "2026-06-20", "url": "https://www.mem.gov.cn/",
+            "summary": "修订后的管理办法进一步明确了应急运力备选库企业的准入条件、考核标准、退出机制。新增无人机运输企业纳入备选库条款。",
+            "tags": ["政策法规", "应急运力备选库", "无人机"],
+        },
+        {
+            "id": "MEM-003", "category": "news", "title": "四川某地泥石流灾害应急运输救援纪实",
+            "source": "应急管理部", "date": "2026-07-08", "url": "https://www.mem.gov.cn/",
+            "summary": "7月8日四川某地发生泥石流灾害，应急管理部立即启动应急响应，调拨救灾帐篷200顶、棉被500床，组织应急运力备选库企业参与运输。",
+            "tags": ["应急救援", "泥石流", "四川"],
+        },
+        {
+            "id": "MEM-004", "category": "warnings", "title": "全国自然灾害综合风险预警（7月第3周）",
+            "source": "应急管理部", "date": "2026-07-18", "url": "https://www.mem.gov.cn/",
+            "summary": "本周西南地区地质灾害风险较高，部分地区暴雨洪涝风险增加。建议应急运力备选库企业做好24小时待命准备。",
+            "tags": ["预警", "地质灾害", "西南地区"],
+        },
+        {
+            "id": "MEM-005", "category": "earthquake", "title": "云南某地3.2级地震速报",
+            "source": "中国地震台网", "date": "2026-07-19", "url": "https://www.mem.gov.cn/",
+            "summary": "据中国地震台网正式测定：7月19日云南某地发生3.2级地震，震源深度10千米，暂无人员伤亡报告。",
+            "tags": ["地震", "云南"],
+        },
+        {
+            "id": "MEM-006", "category": "prevention", "title": "汛期防灾减灾科普：泥石流自救指南",
+            "source": "应急管理部", "date": "2026-07-10", "url": "https://www.mem.gov.cn/",
+            "summary": "科普视频与图文教程：泥石流发生时的正确自救方法、应急物资储备清单、社区疏散路线规划。",
+            "tags": ["科普", "泥石流", "自救"],
+        },
+        {
+            "id": "MEM-007", "category": "notices", "title": "关于开展2026年度应急运输企业考核工作的通知",
+            "source": "应急管理部", "date": "2026-07-01", "url": "https://www.mem.gov.cn/",
+            "summary": "启动年度应急运力备选库企业考核，重点考核安全维度和速度维度。考核结果将影响企业下一年度应急任务承接优先级。",
+            "tags": ["考核", "应急运力备选库"],
+        },
+        {
+            "id": "MEM-008", "category": "policies", "title": "《无人机应急运输操作规范（试行）》",
+            "source": "应急管理部", "date": "2026-05-15", "url": "https://www.mem.gov.cn/",
+            "summary": "首次发布无人机参与救灾物资运输的操作规范，涵盖飞行许可、载重标准、空投安全距离、应急返航等关键要求。",
+            "tags": ["无人机", "操作规范", "救灾运输"],
+        },
+        {
+            "id": "MEM-009", "category": "news", "title": "全国应急管理系统表彰先进集体和个人",
+            "source": "应急管理部", "date": "2026-06-30", "url": "https://www.mem.gov.cn/",
+            "summary": "表彰在应急救援工作中表现突出的集体和个人，其中包括多家应急运力备选库签约企业。",
+            "tags": ["表彰", "先进集体"],
+        },
+        {
+            "id": "MEM-010", "category": "prevention", "title": "企业参与应急运输的安全须知与培训资源",
+            "source": "应急管理部", "date": "2026-06-25", "url": "https://www.mem.gov.cn/",
+            "summary": "面向应急运力备选库企业的安全培训资源汇总，包含线上课程、考核题库、实操演练指南。",
+            "tags": ["培训", "安全", "应急运输"],
+        },
+    ],
+}
+
+
+@app.route("/api/mem/categories", methods=["GET"])
+def mem_categories():
+    """获取应急管理部信息分类"""
+    return jsonify({"categories": MEM_INFO_DATA["categories"]})
+
+
+@app.route("/api/mem/news", methods=["GET"])
+def mem_news():
+    """获取应急管理部信息列表，支持分类筛选"""
+    category = request.args.get("category", "")
+    items = MEM_INFO_DATA["items"]
+    if category:
+        items = [item for item in items if item["category"] == category]
+    return jsonify({
+        "items": items,
+        "total": len(items),
+        "source": "中华人民共和国应急管理部",
+        "fetched_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    })
+
+
+@app.route("/api/mem/push", methods=["GET"])
+def mem_push():
+    """获取最新的应急管理部推送信息"""
+    now = datetime.now()
+    # 取最近3条作为推送
+    recent = MEM_INFO_DATA["items"][:3]
+    return jsonify({
+        "push_count": len(recent),
+        "push_time": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "items": recent,
+        "message": f"您有{len(recent)}条应急管理部最新信息待查阅",
+    })
+
+
+@app.route("/mem")
+def mem_page():
+    """应急管理部信息查阅页面"""
+    ok, redirect_url = _check_auth("/mem")
+    if not ok:
+        return redirect(redirect_url)
+    return render_template("mem_info.html", active_page="mem")
 
 def _extract_map_data(scenario) -> dict:
     """提取地图展示数据 (节点、路段、灾害中心)"""
@@ -1637,6 +3208,32 @@ def _extract_map_data(scenario) -> dict:
         "warehouses": warehouses,
         "disaster": disaster,
     }
+
+
+# ============================================================
+# 系统管理 API
+# ============================================================
+
+@app.route("/api/system/clear", methods=["POST"])
+def api_system_clear():
+    """清空所有账号的所有历史操作"""
+    try:
+        global _runtime_store
+        _runtime_store = {
+            "sessions": {},
+            "results": {},
+            "profiles": {},
+            "behavior_events": {},
+            "group_tasks": {},
+            "progress": {},
+        }
+        # 删除持久化文件
+        if STATE_FILE.exists():
+            STATE_FILE.unlink()
+        save_state()
+        return jsonify({"status": "ok", "message": "所有数据已清空"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ============================================================

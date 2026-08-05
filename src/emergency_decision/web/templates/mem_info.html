@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}应急管理部信息查阅 - 应急决策教学系统{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 16px;">
+  <h2>🏛️ 中华人民共和国应急管理部</h2>
+  <p class="text-muted">信息查阅与推送 | Ministry of Emergency Management</p>
+</div>
+
+<!-- 推送通知区 -->
+<div id="push-section" style="display:none; background:linear-gradient(135deg, #fef3c7, #fde68a); border:2px solid #f59e0b; border-radius:12px; padding:16px 20px; margin-bottom:16px;">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+    <span style="font-size:28px;">🔔</span>
+    <div style="flex:1;">
+      <div style="font-weight:700; color:#92400e; font-size:15px;" id="push-message">您有新信息待查阅</div>
+      <div class="text-sm" style="color:#78350f;" id="push-time"></div>
+    </div>
+    <button onclick="dismissPush()" style="padding:4px 12px; border:1px solid #f59e0b; border-radius:6px; background:#fff; color:#92400e; font-size:12px; cursor:pointer;">我知道了</button>
+  </div>
+  <div id="push-items" style="display:flex; flex-direction:column; gap:6px;"></div>
+</div>
+
+<!-- 分类筛选 -->
+<div class="card" style="padding:14px 16px; margin-bottom:16px;">
+  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+    <span style="font-weight:700; margin-right:8px;">📂 信息分类:</span>
+    <button class="cat-btn active" data-cat="all" onclick="filterCategory('all')" style="padding:5px 12px; border:1px solid #ddd; border-radius:6px; background:#4f46e5; color:#fff; font-size:12px; cursor:pointer;">全部</button>
+    <div id="category-buttons"></div>
+  </div>
+  <span class="text-muted text-sm" style="margin-left:8px;" id="item-count"></span>
+</div>
+
+<!-- 信息列表 -->
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(380px, 1fr)); gap:16px;" id="mem-list">
+  <div class="text-center text-muted" style="padding:40px; grid-column:1/-1;">加载中...</div>
+</div>
+
+<!-- 底部链接 -->
+<div style="text-align:center; margin-top:24px; padding:16px; background:#f8fafc; border-radius:12px;">
+  <p class="text-muted text-sm">数据来源：中华人民共和国应急管理部</p>
+  <a href="https://www.mem.gov.cn/" target="_blank" style="color:#4f46e5; font-size:13px; text-decoration:none; font-weight:600;">🔗 访问应急管理部官网 www.mem.gov.cn</a>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allItems = [];
+let currentCat = 'all';
+
+async function loadCategories() {
+  try {
+    const data = await API.get('/api/mem/categories');
+    const container = document.getElementById('category-buttons');
+    container.innerHTML = data.categories.map(c =>
+      `<button class="cat-btn" data-cat="${c.id}" onclick="filterCategory('${c.id}')" style="padding:5px 12px; border:1px solid #ddd; border-radius:6px; background:#fff; color:#666; font-size:12px; cursor:pointer; margin-left:4px;">${c.icon} ${c.name}</button>`
+    ).join('');
+  } catch (e) { console.error('Categories:', e); }
+}
+
+async function loadNews() {
+  try {
+    const data = await API.get('/api/mem/news');
+    allItems = data.items || [];
+    renderItems();
+    document.getElementById('item-count').textContent = `共${allItems.length}条信息 | 数据更新于 ${data.fetched_at}`;
+  } catch (e) {
+    document.getElementById('mem-list').innerHTML = '<div class="text-center text-muted" style="padding:40px; grid-column:1/-1;">加载失败，请检查服务器</div>';
+  }
+}
+
+function filterCategory(cat) {
+  currentCat = cat;
+  document.querySelectorAll('.cat-btn').forEach(btn => {
+    if (btn.dataset.cat === cat) {
+      btn.style.background = '#4f46e5';
+      btn.style.color = '#fff';
+    } else {
+      btn.style.background = '#fff';
+      btn.style.color = '#666';
+    }
+  });
+  renderItems();
+}
+
+function renderItems() {
+  const items = currentCat === 'all' ? allItems : allItems.filter(i => i.category === currentCat);
+  const list = document.getElementById('mem-list');
+
+  if (items.length === 0) {
+    list.innerHTML = '<div class="text-center text-muted" style="padding:40px; grid-column:1/-1;">暂无信息</div>';
+    return;
+  }
+
+  const catIcons = {
+    notices: '📢', policies: '📋', news: '📰',
+    warnings: '🚨', earthquake: '🌏', prevention: '🛡️'
+  };
+  const catNames = {
+    notices: '通知公告', policies: '政策法规', news: '应急要闻',
+    warnings: '预警信息', earthquake: '地震速报', prevention: '防灾减灾'
+  };
+
+  list.innerHTML = items.map(item => {
+    const icon = catIcons[item.category] || '📄';
+    const catName = catNames[item.category] || item.category;
+    const isUrgent = item.category === 'warnings' || item.category === 'earthquake';
+    return `
+    <div class="card" style="padding:16px; ${isUrgent ? 'border-left:4px solid #ef4444;' : ''}">
+      <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:20px;">${icon}</span>
+          <span style="background:${isUrgent ? '#fee2e2' : '#e0e7ff'}; color:${isUrgent ? '#b91c1c' : '#4338ca'}; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">${catName}</span>
+        </div>
+        <span class="text-muted text-sm">${item.date}</span>
+      </div>
+      <h4 style="font-size:14px; font-weight:700; color:#1e293b; margin-bottom:8px; line-height:1.4;">${item.title}</h4>
+      <p class="text-sm" style="color:#555; line-height:1.6; margin-bottom:8px;">${item.summary}</p>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; gap:4px; flex-wrap:wrap;">
+          ${(item.tags || []).map(t => `<span style="background:#f0f7ff; color:#3b82f6; padding:2px 8px; border-radius:10px; font-size:10px;">${t}</span>`).join('')}
+        </div>
+        <a href="${item.url}" target="_blank" style="color:#4f46e5; font-size:12px; text-decoration:none; font-weight:600;">查看原文 →</a>
+      </div>
+      <div class="text-muted" style="font-size:11px; margin-top:6px;">来源: ${item.source}</div>
+    </div>`;
+  }).join('');
+}
+
+async function loadPush() {
+  try {
+    const data = await API.get('/api/mem/push');
+    if (data.push_count > 0) {
+      document.getElementById('push-message').textContent = data.message;
+      document.getElementById('push-time').textContent = '推送时间: ' + data.push_time;
+      document.getElementById('push-items').innerHTML = data.items.map(item =>
+        `<div style="background:rgba(255,255,255,0.7); padding:8px 12px; border-radius:8px; font-size:13px;">
+          <b>${item.title}</b>
+          <span class="text-muted" style="margin-left:8px;">${item.date}</span>
+        </div>`
+      ).join('');
+      document.getElementById('push-section').style.display = '';
+    }
+  } catch (e) { console.error('Push:', e); }
+}
+
+function dismissPush() {
+  document.getElementById('push-section').style.display = 'none';
+}
+
+window.addEventListener('load', () => {
+  loadCategories();
+  loadNews();
+  loadPush();
+});
+</script>
+{% endblock %}

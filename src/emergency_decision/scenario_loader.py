@@ -11,6 +11,7 @@ from typing import Optional
 from .models import (
     ScenarioContext, Disaster, DisasterType,
     EarthquakeData, RainstormData, TyphoonData, LandslideData,
+    SnowstormData, SandstormData, WildfireData, TsunamiData,
     WaveArrival,
     LogisticsNetwork, NetworkNode, Road, RoadType, RoadCondition,
     Vehicle, VehicleType, VehicleStatus,
@@ -26,6 +27,7 @@ def load_scenario_from_dict(data: dict) -> ScenarioContext:
     # 解析灾害
     d = data['disaster']
     eq_data = rs_data = tf_data = ls_data = None
+    ss_data = st_data = wf_data = tn_data = None
 
     if d.get('earthquake'):
         eq = d['earthquake']
@@ -78,15 +80,131 @@ def load_scenario_from_dict(data: dict) -> ScenarioContext:
 
     if d.get('landslide'):
         ls = d['landslide']
+        blocked = ls.get('blocked_roads', [])
+        if isinstance(blocked, (int, float)):
+            blocked = [str(int(blocked))]  # 兼容旧的整数字段
+        elif isinstance(blocked, list):
+            blocked = [str(b) for b in blocked]
         ls_data = LandslideData(
             location_city=ls['location_city'],
             location_lat=ls['location_lat'],
             location_lng=ls['location_lng'],
-            blocked_roads=ls.get('blocked_roads', []),
+            blocked_roads=blocked,
             scale_level=ls.get('scale_level', 'medium'),
             estimated_clear_hours=ls.get('estimated_clear_hours', 48),
             affected_areas=ls.get('affected_areas', []),
         )
+
+    if d.get('snowstorm'):
+        ss = d['snowstorm']
+        ss_data = SnowstormData(
+            center_city=ss.get('center_city', ''),
+            center_lat=ss.get('center_lat', d.get('center_lat', 0)),
+            center_lng=ss.get('center_lng', d.get('center_lng', 0)),
+            snowfall_cm=ss.get('snowfall_cm', 30),
+            temperature_min=ss.get('temperature_min', -15),
+            affected_duration_hours=ss.get('affected_duration_hours', 48),
+            affected_areas=ss.get('affected_areas', []),
+        )
+
+    if d.get('sandstorm'):
+        st = d['sandstorm']
+        st_data = SandstormData(
+            center_city=st.get('center_city', ''),
+            center_lat=st.get('center_lat', d.get('center_lat', 0)),
+            center_lng=st.get('center_lng', d.get('center_lng', 0)),
+            wind_force_level=st.get('wind_force_level', 9),
+            visibility_m=st.get('visibility_m', 500),
+            affected_duration_hours=st.get('affected_duration_hours', 12),
+            affected_areas=st.get('affected_areas', []),
+        )
+
+    if d.get('wildfire'):
+        wf = d['wildfire']
+        wf_data = WildfireData(
+            center_city=wf.get('center_city', ''),
+            center_lat=wf.get('center_lat', d.get('center_lat', 0)),
+            center_lng=wf.get('center_lng', d.get('center_lng', 0)),
+            fire_level=wf.get('fire_level', 3),
+            burned_area_ha=wf.get('burned_area_ha', 500),
+            affected_areas=wf.get('affected_areas', []),
+        )
+
+    if d.get('tsunami'):
+        tn = d['tsunami']
+        tn_data = TsunamiData(
+            center_city=tn.get('center_city', ''),
+            center_lat=tn.get('center_lat', d.get('center_lat', 0)),
+            center_lng=tn.get('center_lng', d.get('center_lng', 0)),
+            wave_height_m=tn.get('wave_height_m', 5),
+            warning_level=tn.get('warning_level', 'red'),
+            affected_areas=tn.get('affected_areas', []),
+        )
+
+    # 影响半径：优先读取disaster顶层，缺失时从子灾害数据中推断
+    _radius_km = d.get('influence_radius_km', 0.0)
+    if _radius_km <= 0:
+        if eq_data:
+            _radius_km = eq_data.influence_radius_km or 100
+        elif tf_data:
+            _radius_km = tf_data.influence_radius_km or 200
+        elif ls_data:
+            _radius_km = getattr(ls_data, 'influence_radius_km', 150) or 150
+        elif rs_data:
+            _radius_km = 150
+        elif ss_data:
+            _radius_km = 150
+        elif st_data:
+            _radius_km = 150
+        elif wf_data:
+            _radius_km = 150
+        elif tn_data:
+            _radius_km = 150
+        else:
+            _radius_km = 100  # 通用兜底
+        # 如果网络中有节点信息，根据实际节点距离动态调整半径
+        nodes_data = data.get('logistics_network', {}).get('nodes', [])
+        if nodes_data:
+            # 获取灾害中心坐标：优先从disaster顶层，缺失时从子灾害数据推断
+            center_lat = d.get('center_lat', 0)
+            center_lng = d.get('center_lng', 0)
+            if not center_lat and not center_lng:
+                # 从子灾害数据中提取中心坐标
+                if eq_data:
+                    center_lat = eq_data.epicenter_lat or 0
+                    center_lng = eq_data.epicenter_lng or 0
+                elif rs_data:
+                    center_lat = rs_data.center_lat or 0
+                    center_lng = rs_data.center_lng or 0
+                elif tf_data:
+                    center_lat = tf_data.center_lat or 0
+                    center_lng = tf_data.center_lng or 0
+                elif ls_data:
+                    center_lat = ls_data.location_lat or 0
+                    center_lng = ls_data.location_lng or 0
+                elif ss_data:
+                    center_lat = ss_data.center_lat or 0
+                    center_lng = ss_data.center_lng or 0
+                elif st_data:
+                    center_lat = st_data.center_lat or 0
+                    center_lng = st_data.center_lng or 0
+                elif wf_data:
+                    center_lat = wf_data.center_lat or 0
+                    center_lng = wf_data.center_lng or 0
+                elif tn_data:
+                    center_lat = tn_data.center_lat or 0
+                    center_lng = tn_data.center_lng or 0
+            if center_lat or center_lng:
+                import math
+                max_dist = 0
+                for n in nodes_data:
+                    dlat = (n.get('lat', 0) - center_lat) * 111.32
+                    dlng = (n.get('lng', 0) - center_lng) * 111.32 * math.cos(center_lat * math.pi / 180)
+                    dist = math.sqrt(dlat * dlat + dlng * dlng)
+                    if dist > max_dist:
+                        max_dist = dist
+                if max_dist > _radius_km:
+                    _radius_km = math.ceil(max_dist * 1.5)
 
     disaster = Disaster(
         disaster_id=d['disaster_id'],
@@ -95,6 +213,11 @@ def load_scenario_from_dict(data: dict) -> ScenarioContext:
         rainstorm=rs_data,
         typhoon=tf_data,
         landslide=ls_data,
+        snowstorm=ss_data,
+        sandstorm=st_data,
+        wildfire=wf_data,
+        tsunami=tn_data,
+        _radius_km=_radius_km,
     )
 
     # 解析物流网络
@@ -324,6 +447,59 @@ def scenario_to_dict(scenario: ScenarioContext) -> dict:
             "port_closure": tf.port_closure,
             "airport_closure": tf.airport_closure,
             "affected_areas": tf.affected_areas,
+        }
+    if d.landslide:
+        ls = d.landslide
+        disaster_dict["landslide"] = {
+            "location_city": ls.location_city,
+            "location_lat": ls.location_lat,
+            "location_lng": ls.location_lng,
+            "blocked_roads": ls.blocked_roads,
+            "scale_level": ls.scale_level,
+            "estimated_clear_hours": ls.estimated_clear_hours,
+            "affected_areas": ls.affected_areas,
+        }
+    if d.snowstorm:
+        ss = d.snowstorm
+        disaster_dict["snowstorm"] = {
+            "center_city": ss.center_city,
+            "center_lat": ss.center_lat,
+            "center_lng": ss.center_lng,
+            "snowfall_cm": ss.snowfall_cm,
+            "temperature_min": ss.temperature_min,
+            "affected_duration_hours": ss.affected_duration_hours,
+            "affected_areas": ss.affected_areas,
+        }
+    if d.sandstorm:
+        st = d.sandstorm
+        disaster_dict["sandstorm"] = {
+            "center_city": st.center_city,
+            "center_lat": st.center_lat,
+            "center_lng": st.center_lng,
+            "wind_force_level": st.wind_force_level,
+            "visibility_m": st.visibility_m,
+            "affected_duration_hours": st.affected_duration_hours,
+            "affected_areas": st.affected_areas,
+        }
+    if d.wildfire:
+        wf = d.wildfire
+        disaster_dict["wildfire"] = {
+            "center_city": wf.center_city,
+            "center_lat": wf.center_lat,
+            "center_lng": wf.center_lng,
+            "fire_level": wf.fire_level,
+            "burned_area_ha": wf.burned_area_ha,
+            "affected_areas": wf.affected_areas,
+        }
+    if d.tsunami:
+        tn = d.tsunami
+        disaster_dict["tsunami"] = {
+            "center_city": tn.center_city,
+            "center_lat": tn.center_lat,
+            "center_lng": tn.center_lng,
+            "wave_height_m": tn.wave_height_m,
+            "warning_level": tn.warning_level,
+            "affected_areas": tn.affected_areas,
         }
 
     return {

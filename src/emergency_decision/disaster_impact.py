@@ -126,6 +126,17 @@ class DisasterImpactAnalyzer:
                                              DisasterType.MUDSLIDE,
                                              DisasterType.FLOOD):
                 self._mark_landslide_road(road, disaster, disaster.disaster_id)
+            elif disaster.disaster_type == DisasterType.SNOWSTORM:
+                self._mark_snowstorm_road(road, dist, radius, disaster.disaster_id)
+            elif disaster.disaster_type == DisasterType.SANDSTORM:
+                self._mark_sandstorm_road(road, dist, radius, disaster.disaster_id)
+            elif disaster.disaster_type == DisasterType.WILDFIRE:
+                self._mark_wildfire_road(road, dist, radius, disaster.disaster_id)
+            elif disaster.disaster_type == DisasterType.TSUNAMI:
+                self._mark_tsunami_road(road, dist, radius, disaster.disaster_id)
+            else:
+                # 未匹配类型的通用回退处理
+                self._mark_generic_road(road, dist, radius, disaster.disaster_id)
 
             # 归类
             if road.affected_type == AffectedType.BLOCKED:
@@ -166,11 +177,18 @@ class DisasterImpactAnalyzer:
     def _mark_rainstorm_road(self, road: Road, disaster: Disaster,
                               disaster_id: str):
         """暴雨影响标记"""
-        # 检查场景预置的积水路段数据
-        waterlogged = {}
+        # 检查场景预置的积水路段数据(兼容字符串ID和字典格式)
+        waterlogged_ids: set = set()
+        waterlogged_details: dict = {}
         if disaster.rainstorm and disaster.rainstorm.waterlogged_roads:
             for wr in disaster.rainstorm.waterlogged_roads:
-                waterlogged[wr.get("road_id", "")] = wr
+                if isinstance(wr, str):
+                    waterlogged_ids.add(wr)
+                elif isinstance(wr, dict):
+                    rid = wr.get("road_id", "")
+                    if rid:
+                        waterlogged_ids.add(rid)
+                        waterlogged_details[rid] = wr
 
         # 检查场景预置的中断状态
         if road.road_condition.value == "blocked":
@@ -178,10 +196,11 @@ class DisasterImpactAnalyzer:
             road.delay_factor = float('inf')
             road.affected_type = AffectedType.BLOCKED
             road.estimated_recovery_hours = 24.0
-        elif road.road_id in waterlogged:
-            wr = waterlogged[road.road_id]
-            water_depth = wr.get("water_depth_cm", 0)
-            if not wr.get("passable", True) or water_depth >= 50:
+        elif road.road_id in waterlogged_ids:
+            wr_detail = waterlogged_details.get(road.road_id, {})
+            water_depth = wr_detail.get("water_depth_cm", 50) if isinstance(wr_detail, dict) else 50
+            is_passable = wr_detail.get("passable", False) if isinstance(wr_detail, dict) else False
+            if not is_passable or water_depth >= 50:
                 road.risk_score = 0.9
                 road.delay_factor = float('inf')
                 road.affected_type = AffectedType.BLOCKED
@@ -326,3 +345,95 @@ class DisasterImpactAnalyzer:
                 wh.estimated_recovery_hours = 6.0
                 result.damaged_warehouse_ids.append(wh.warehouse_id)
             # else: normal, 不标记
+
+    def _mark_snowstorm_road(self, road: Road, dist: float,
+                              radius: float, disaster_id: str):
+        """暴雪影响标记"""
+        ratio = dist / radius if radius > 0 else 1.0
+        road.risk_score = max(0.3, 0.85 - ratio * 0.5)
+        # 暴雪：道路结冰风险高，视距离影响程度标记
+        if ratio <= 0.3:
+            road.affected_type = AffectedType.BLOCKED
+            road.delay_factor = float('inf')
+            road.estimated_recovery_hours = 36.0
+        elif ratio <= 0.5:
+            road.affected_type = AffectedType.RESTRICTED
+            road.delay_factor = 3.0
+        else:
+            road.affected_type = AffectedType.SLOW
+            road.delay_factor = 2.0
+        road.disaster_affected = True
+        road.affected_by_disaster = disaster_id
+
+    def _mark_sandstorm_road(self, road: Road, dist: float,
+                              radius: float, disaster_id: str):
+        """沙尘暴影响标记"""
+        ratio = dist / radius if radius > 0 else 1.0
+        road.risk_score = max(0.2, 0.7 - ratio * 0.4)
+        # 沙尘暴：能见度极低，所有受影响道路限行
+        if ratio <= 0.4:
+            road.affected_type = AffectedType.BLOCKED
+            road.delay_factor = float('inf')
+            road.estimated_recovery_hours = 12.0
+        else:
+            road.affected_type = AffectedType.RESTRICTED
+            road.delay_factor = 2.5
+        road.disaster_affected = True
+        road.affected_by_disaster = disaster_id
+
+    def _mark_wildfire_road(self, road: Road, dist: float,
+                             radius: float, disaster_id: str):
+        """森林火灾影响标记"""
+        ratio = dist / radius if radius > 0 else 1.0
+        road.risk_score = max(0.3, 0.9 - ratio * 0.6)
+        # 火灾：近距离完全阻断，稍远限行
+        if ratio <= 0.2:
+            road.affected_type = AffectedType.BLOCKED
+            road.delay_factor = float('inf')
+            road.estimated_recovery_hours = 48.0
+        elif ratio <= 0.5:
+            road.affected_type = AffectedType.RESTRICTED
+            road.delay_factor = 3.0
+        else:
+            road.affected_type = AffectedType.SLOW
+            road.delay_factor = 1.8
+        road.disaster_affected = True
+        road.affected_by_disaster = disaster_id
+
+    def _mark_tsunami_road(self, road: Road, dist: float,
+                            radius: float, disaster_id: str):
+        """海啸影响标记"""
+        ratio = dist / radius if radius > 0 else 1.0
+        road.risk_score = max(0.4, 0.95 - ratio * 0.5)
+        # 海啸：近海路段完全冲毁
+        if ratio <= 0.3:
+            road.affected_type = AffectedType.BLOCKED
+            road.delay_factor = float('inf')
+            road.estimated_recovery_hours = 72.0
+        elif ratio <= 0.6:
+            road.affected_type = AffectedType.RESTRICTED
+            road.delay_factor = 4.0
+        else:
+            road.affected_type = AffectedType.SLOW
+            road.delay_factor = 2.0
+        road.disaster_affected = True
+        road.affected_by_disaster = disaster_id
+
+    def _mark_generic_road(self, road: Road, dist: float,
+                            radius: float, disaster_id: str):
+        """通用灾害回退标记 - 未明确匹配的灾害类型"""
+        ratio = dist / radius if radius > 0 else 1.0
+        road.risk_score = max(0.2, 0.7 - ratio * 0.5)
+        # 通用规则：根据距离分级标记
+        if ratio <= 0.3:
+            road.affected_type = AffectedType.BLOCKED
+            road.delay_factor = float('inf')
+            road.estimated_recovery_hours = 24.0
+        elif ratio <= 0.6:
+            road.affected_type = AffectedType.RESTRICTED
+            road.delay_factor = 2.5
+        else:
+            road.affected_type = AffectedType.SLOW
+            road.delay_factor = 1.5
+        road.disaster_affected = True
+        road.affected_by_disaster = disaster_id

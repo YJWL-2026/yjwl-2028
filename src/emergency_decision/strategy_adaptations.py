@@ -355,6 +355,265 @@ class BudgetValidator:
 
 
 # ============================================================
+# 策略四: 救灾决策模式 (EmergencyRelief)
+# ============================================================
+
+@dataclass
+class EmergencyReliefAssessment:
+    """救灾物资运送决策考核结果"""
+    safety_score: float          # 安全维度得分 (0-100)
+    speed_score: float           # 速度维度得分 (0-100)
+    total_score: float           # 综合得分
+    grade: str                   # S/A/B/C/D 等级
+    
+    safety_factors: list = field(default_factory=list)  # 安全维度明细
+    speed_factors: list = field(default_factory=list)   # 速度维度明细
+    suggestions: list = field(default_factory=list)     # 改进建议
+    
+    def to_dict(self) -> dict:
+        return {
+            "safety_score": self.safety_score,
+            "speed_score": self.speed_score,
+            "total_score": self.total_score,
+            "grade": self.grade,
+            "safety_factors": self.safety_factors,
+            "speed_factors": self.speed_factors,
+            "suggestions": self.suggestions,
+        }
+
+
+class EmergencyReliefAssessor:
+    """
+    救灾决策模式考核器
+    - 考核学生在救灾物资运输决策中的安全与速度表现
+    - 安全维度: 路线安全、货物防护、运输工具状态、人员资质
+    - 速度维度: 响应时效、路线优化、中转效率、末端送达
+    """
+    
+    def assess(self, student_actions: list[dict],
+               optimal_plan: DecisionPlan,
+               scenario: ScenarioContext,
+               submit_time_sec: float = 0) -> EmergencyReliefAssessment:
+        """
+        评估学生救灾决策
+        
+        Args:
+            student_actions: 学生提交的决策列表
+            optimal_plan: AI最优方案(用于对比)
+            scenario: 场景上下文
+            submit_time_sec: 学生提交用时(秒)
+        """
+        
+        # ===== 安全维度评估 (50%) =====
+        safety_factors = []
+
+        # 1. 路线安全评估 (满分25)
+        reroute_count = sum(1 for a in student_actions if a.get("action_type") == "reroute")
+        drone_count = sum(1 for a in student_actions if a.get("transport_mode") == "drone")
+        total_actions = max(len(student_actions), 1)
+
+        # 无人机运输在救灾场景下安全性更高(避开地面灾害)
+        drone_ratio = drone_count / total_actions if total_actions > 0 else 0
+        route_safety_score = min(25, 15 + drone_ratio * 10 + (5 if reroute_count > 0 else 0))
+
+        # 路线选择: 选择安全路线加分, 选择快速路线扣分
+        safe_route_count = sum(1 for a in student_actions if a.get("route_selection") == "safe")
+        fast_route_count = sum(1 for a in student_actions if a.get("route_selection") == "fast")
+        if total_actions > 0:
+            safe_route_ratio = safe_route_count / total_actions
+            fast_route_ratio = fast_route_count / total_actions
+            route_safety_score += safe_route_ratio * 5  # 安全路线加分
+            route_safety_score -= fast_route_ratio * 3  # 快速路线扣分
+        route_safety_score = max(0, min(25, route_safety_score))
+        route_detail = f"改道{reroute_count}单, 无人机{drone_count}单, 安全路线{safe_route_count}单/快速路线{fast_route_count}单"
+        safety_factors.append({
+            "id": "route_safety",
+            "name": "路线安全评估",
+            "score": round(route_safety_score, 1),
+            "max_score": 25,
+            "detail": route_detail,
+        })
+
+        # 2. 货物固定与防护 (满分25) - 基于安全措施勾选
+        abandon_count = sum(1 for a in student_actions if a.get("action_type") == "abandon")
+        abandon_ratio = abandon_count / total_actions if total_actions > 0 else 0
+        cargo_secure_score = 25 - abandon_ratio * 15  # 放弃货物扣分
+
+        # 安全措施勾选加分: 货物固定 + 防潮处理
+        cargo_check_count = sum(1 for a in student_actions
+                                if a.get("safety_checks", {}).get("cargo_secure"))
+        moisture_check_count = sum(1 for a in student_actions
+                                   if a.get("safety_checks", {}).get("moisture_proof"))
+        if total_actions > 0:
+            cargo_secure_score += (cargo_check_count / total_actions) * 5  # 货物固定加分
+            cargo_secure_score += (moisture_check_count / total_actions) * 5  # 防潮处理加分
+        cargo_secure_score = max(5, min(25, cargo_secure_score))
+        safety_factors.append({
+            "id": "cargo_secure",
+            "name": "货物固定与防护",
+            "score": round(cargo_secure_score, 1),
+            "max_score": 25,
+            "detail": f"放弃货物{abandon_count}单, 货物固定{cargo_check_count}单, 防潮处理{moisture_check_count}单",
+        })
+
+        # 3. 运输工具状态 (满分25) - 基于安全措施勾选
+        warehouse_count = sum(1 for a in student_actions if a.get("action_type") == "warehouse_transfer")
+        # 转仓暂存表示谨慎决策,加分
+        vehicle_condition_score = min(25, 15 + warehouse_count * 3)
+
+        # 运输工具检查勾选加分
+        vehicle_check_count = sum(1 for a in student_actions
+                                  if a.get("safety_checks", {}).get("vehicle_check"))
+        if total_actions > 0:
+            vehicle_condition_score += (vehicle_check_count / total_actions) * 7
+        vehicle_condition_score = min(25, vehicle_condition_score)
+        safety_factors.append({
+            "id": "vehicle_condition",
+            "name": "运输工具状态",
+            "score": round(vehicle_condition_score, 1),
+            "max_score": 25,
+            "detail": f"转仓暂存{warehouse_count}单, 运输工具检查{vehicle_check_count}单",
+        })
+
+        # 4. 人员资质 (满分25) - 基于安全措施勾选
+        valid_actions = sum(1 for a in student_actions
+                           if a.get("vehicle_id") or a.get("drone_id") or a.get("warehouse_id"))
+        valid_ratio = valid_actions / total_actions if total_actions > 0 else 0
+        driver_score = min(25, 10 + valid_ratio * 15)
+
+        # 驾驶员资质确认勾选加分
+        driver_check_count = sum(1 for a in student_actions
+                                 if a.get("safety_checks", {}).get("driver_qualification"))
+        if total_actions > 0:
+            driver_score += (driver_check_count / total_actions) * 7
+        driver_score = min(25, driver_score)
+        safety_factors.append({
+            "id": "driver_training",
+            "name": "人员资质与配置",
+            "score": round(driver_score, 1),
+            "max_score": 25,
+            "detail": f"有效分配{valid_actions}/{total_actions}单, 资质确认{driver_check_count}单",
+        })
+        
+        safety_total = sum(f["score"] for f in safety_factors)
+        
+        # ===== 速度维度评估 (50%) =====
+        speed_factors = []
+        
+        # 1. 响应时效 (满分25) - 提交越快越好
+        if submit_time_sec <= 60:
+            response_score = 25
+        elif submit_time_sec <= 120:
+            response_score = 20
+        elif submit_time_sec <= 180:
+            response_score = 15
+        elif submit_time_sec <= 300:
+            response_score = 10
+        else:
+            response_score = max(5, 25 - (submit_time_sec - 60) / 20)
+        speed_factors.append({
+            "id": "response_time",
+            "name": "响应时效",
+            "score": round(response_score, 1),
+            "max_score": 25,
+            "detail": f"用时{submit_time_sec:.0f}秒提交",
+        })
+        
+        # 2. 路线优化 (满分25) - 与AI方案对比, 快速路线加分
+        ai_delivered = optimal_plan.cargo_delivered if optimal_plan else 0
+        stu_delivered = reroute_count
+        # 学生改道率与AI对比
+        route_opt_score = min(25, 10 + stu_delivered * 3)
+        # 快速路线选择加分(速度维度)
+        fast_route_count = sum(1 for a in student_actions if a.get("route_selection") == "fast")
+        if total_actions > 0:
+            route_opt_score += (fast_route_count / total_actions) * 5
+        route_opt_score = min(25, route_opt_score)
+        speed_factors.append({
+            "id": "route_optimization",
+            "name": "路线优化",
+            "score": round(route_opt_score, 1),
+            "max_score": 25,
+            "detail": f"改道送达{stu_delivered}单, 快速路线{fast_route_count}单, AI送达{ai_delivered}单",
+        })
+        
+        # 3. 中转效率 (满分25)
+        # 转仓越少效率越高,但合理的转仓(1-2单)说明有规划
+        if warehouse_count <= 2:
+            transfer_score = 25 - warehouse_count * 3
+        else:
+            transfer_score = max(10, 25 - warehouse_count * 4)
+        speed_factors.append({
+            "id": "transfer_efficiency",
+            "name": "中转效率",
+            "score": round(transfer_score, 1),
+            "max_score": 25,
+            "detail": f"转仓{warehouse_count}单",
+        })
+        
+        # 4. 末端送达速度 (满分25) - 无人机送达更快
+        drone_delivery_score = min(25, 10 + drone_count * 5)
+        speed_factors.append({
+            "id": "delivery_speed",
+            "name": "末端送达速度",
+            "score": round(drone_delivery_score, 1),
+            "max_score": 25,
+            "detail": f"无人机直达{drone_count}单, 缩短末端时间",
+        })
+        
+        speed_total = sum(f["score"] for f in speed_factors)
+        
+        # ===== 综合评分 =====
+        total = round(safety_total * 0.5 + speed_total * 0.5, 1)
+        
+        if total >= 90:
+            grade = "S"
+        elif total >= 80:
+            grade = "A"
+        elif total >= 70:
+            grade = "B"
+        elif total >= 60:
+            grade = "C"
+        else:
+            grade = "D"
+        
+        # 改进建议
+        suggestions = []
+        if route_safety_score < 20:
+            suggestions.append("建议增加无人机运输比例，降低地面路线风险")
+        if sum(1 for a in student_actions if a.get("route_selection") == "fast") > total_actions * 0.5:
+            suggestions.append("快速路线选择过多，救灾场景应优先保障安全，建议适当增加安全路线比例")
+        if sum(1 for a in student_actions if not a.get("safety_checks", {}).get("cargo_secure")) > 0:
+            suggestions.append("部分救灾物资未落实货物固定与防震措施，存在运输损耗风险")
+        if sum(1 for a in student_actions if not a.get("safety_checks", {}).get("moisture_proof")) > 0:
+            suggestions.append("部分救灾物资未做防潮防雨处理，雨天运输可能受损")
+        if sum(1 for a in student_actions if not a.get("safety_checks", {}).get("vehicle_check")) > 0:
+            suggestions.append("部分运输工具未进行安全检查，存在故障隐患")
+        if sum(1 for a in student_actions if not a.get("safety_checks", {}).get("driver_qualification")) > 0:
+            suggestions.append("部分运输任务未确认驾驶员/操作员资质，合规风险")
+        if abandon_ratio > 0.2:
+            suggestions.append("放弃货物比例过高，应优先保障救灾物资送达")
+        if response_score < 20:
+            suggestions.append("响应速度需提升，救灾场景下时间就是生命")
+        if drone_count == 0:
+            suggestions.append("未使用无人机运输，建议对轻量救灾物资启用空投")
+        if warehouse_count > 3:
+            suggestions.append("转仓次数过多，影响救灾运输时效")
+        if not suggestions:
+            suggestions.append("救灾决策表现优秀，安全与速度兼顾，可优先承接紧急任务")
+        
+        return EmergencyReliefAssessment(
+            safety_score=round(safety_total, 1),
+            speed_score=round(speed_total, 1),
+            total_score=total,
+            grade=grade,
+            safety_factors=safety_factors,
+            speed_factors=speed_factors,
+            suggestions=suggestions,
+        )
+
+
+# ============================================================
 # 策略总控
 # ============================================================
 
@@ -369,6 +628,7 @@ class StrategyController:
         self.disruption_gen = DisruptionGenerator()
         self.budget_manager = BudgetConstraintManager()
         self.budget_validator = BudgetValidator()
+        self.emergency_assessor = EmergencyReliefAssessor()
 
     def get_strategy_context(self, optimal_plan: DecisionPlan,
                               scenario: ScenarioContext) -> dict:
@@ -403,6 +663,25 @@ class StrategyController:
                 "ai_plan_visible": True,
                 "time_limit": None,
                 "budget_constraint": budget.to_dict(),
+            }
+        
+        elif mode == StrategyMode.EMERGENCY_RELIEF:
+            # 策略四: 救灾决策模式
+            return {
+                "mode": "emergency_relief",
+                "mode_name": "救灾决策模式",
+                "description": "本次任务为救灾物资运输决策！考核安全与速度双重维度，请合理调度运输资源，保障救灾物资安全快速送达。",
+                "hidden_disruptions": [],
+                "ai_plan_visible": True,
+                "time_limit": scenario.strategy_config.time_limit_sec or 300,
+                "budget_constraint": None,
+                "is_relief_mode": True,
+                "assessment_dimensions": {
+                    "safety": {"name": "安全维度", "weight": 0.5, "factors": [
+                        "路线安全评估", "货物固定与防护", "运输工具状态", "人员资质与配置"]},
+                    "speed": {"name": "速度维度", "weight": 0.5, "factors": [
+                        "响应时效", "路线优化", "中转效率", "末端送达速度"]},
+                },
             }
         
         else:

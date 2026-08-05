@@ -10,93 +10,182 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
                    "Microsoft YaHei", sans-serif;
-      background: #0f172a;
-      color: #1a1a2e;
       min-height: 100vh;
       display: flex;
-      align-items: center;
-      justify-content: center;
       overflow: hidden;
+    }
+
+    /* ===== 左侧主题区 ===== */
+    .hero-side {
+      flex: 1;
       position: relative;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 30%, #312e81 60%, #4338ca 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 60px;
+      overflow: hidden;
     }
 
-    /* 背景动画 */
-    .bg-gradient {
-      position: fixed;
-      inset: 0;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #312e81 70%, #4338ca 100%);
-      z-index: 0;
-    }
-
-    .bg-orb {
-      position: fixed;
+    /* 装饰光球 */
+    .hero-orb {
+      position: absolute;
       border-radius: 50%;
       filter: blur(80px);
-      opacity: 0.4;
+      opacity: 0.35;
       animation: float 8s ease-in-out infinite;
-      z-index: 0;
     }
-    .bg-orb-1 { width: 400px; height: 400px; background: #6366f1; top: -100px; left: -100px; }
-    .bg-orb-2 { width: 350px; height: 350px; background: #ec4899; bottom: -80px; right: -60px; animation-delay: 2s; }
-    .bg-orb-3 { width: 300px; height: 300px; background: #06b6d4; top: 50%; left: 60%; animation-delay: 4s; opacity: 0.25; }
+    .hero-orb-1 { width: 400px; height: 400px; background: #6366f1; top: -80px; left: -80px; }
+    .hero-orb-2 { width: 350px; height: 350px; background: #ec4899; bottom: -60px; right: -40px; animation-delay: 2s; }
+    .hero-orb-3 { width: 280px; height: 280px; background: #06b6d4; top: 45%; right: 20%; animation-delay: 4s; opacity: 0.2; }
 
     @keyframes float {
       0%, 100% { transform: translateY(0) scale(1); }
       50% { transform: translateY(-30px) scale(1.05); }
     }
 
-    /* 登录卡片 */
-    .login-container {
+    .hero-content {
       position: relative;
       z-index: 1;
-      width: 100%;
-      max-width: 440px;
-      padding: 20px;
+      max-width: 500px;
     }
 
-    .login-card {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(20px);
-      border-radius: 20px;
-      padding: 40px 36px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3),
-                  0 0 0 1px rgba(255, 255, 255, 0.1);
-      animation: cardIn 0.5s ease-out;
-    }
-
-    @keyframes cardIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Logo区域 */
-    .login-logo {
-      text-align: center;
-      margin-bottom: 28px;
-    }
-
-    .login-logo .icon {
-      font-size: 48px;
+    .hero-logo {
+      font-size: 56px;
       display: inline-block;
       animation: pulse 2s ease-in-out infinite;
+      margin-bottom: 12px;
     }
 
     @keyframes pulse {
       0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.1); }
+      50% { transform: scale(1.08); }
     }
 
-    .login-logo h1 {
+    .hero-title {
+      font-size: 36px;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.3;
+      margin-bottom: 8px;
+    }
+
+    .hero-subtitle {
+      font-size: 16px;
+      color: #c7d2fe;
+      margin-bottom: 40px;
+      letter-spacing: 1px;
+    }
+
+    /* 流程图导航 */
+    .hero-flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 32px;
+      padding: 16px 10px;
+    }
+
+    .flow-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 12px 8px;
+      min-width: 70px;
+      transition: all 0.3s ease;
+    }
+
+    .flow-step:hover {
+      background: rgba(255,255,255,0.16);
+      transform: translateY(-3px);
+      border-color: rgba(255,255,255,0.28);
+    }
+
+    .flow-icon {
       font-size: 22px;
+      margin-bottom: 4px;
+    }
+
+    .flow-step-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #e0e7ff;
+      white-space: nowrap;
+    }
+
+    .flow-arrow {
+      font-size: 18px;
+      color: rgba(255,255,255,0.35);
+      font-weight: bold;
+      margin: 0 2px;
+      flex-shrink: 0;
+    }
+
+    /* 底部标签 */
+    .hero-tags {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .hero-tag {
+      font-size: 12px;
+      color: #c7d2fe;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .hero-tag .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #34d399;
+    }
+
+    /* ===== 右侧表单区 ===== */
+    .form-side {
+      width: 520px;
+      max-width: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8fafc;
+      padding: 40px;
+      overflow-y: auto;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .login-header h2 {
+      font-size: 24px;
       font-weight: 700;
       color: #1e293b;
-      margin-top: 8px;
+      margin-bottom: 6px;
     }
 
-    .login-logo .subtitle {
+    .login-header p {
       font-size: 13px;
-      color: #64748b;
-      margin-top: 4px;
+      color: #94a3b8;
     }
 
     /* 角色切换Tab */
@@ -154,13 +243,12 @@
       font-size: 15px;
       color: #1e293b;
       transition: all 0.2s ease;
-      background: #f8fafc;
+      background: #ffffff;
     }
 
     .form-input:focus {
       outline: none;
       border-color: #6366f1;
-      background: #ffffff;
       box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
     }
 
@@ -189,14 +277,8 @@
       box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
     }
 
-    .btn-login:active {
-      transform: translateY(0);
-    }
-
-    .btn-login:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
+    .btn-login:active { transform: translateY(0); }
+    .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
 
     /* 快速登录区 */
     .quick-login {
@@ -217,7 +299,7 @@
       align-items: center;
       gap: 10px;
       padding: 10px 14px;
-      background: #f8fafc;
+      background: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
       margin-bottom: 8px;
@@ -238,43 +320,18 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #ffffff;
+      background: #f8fafc;
       border-radius: 8px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
 
-    .quick-account .qa-info {
-      flex: 1;
-    }
+    .quick-account .qa-info { flex: 1; }
+    .quick-account .qa-name { font-size: 13px; font-weight: 600; color: #1e293b; }
+    .quick-account .qa-account { font-size: 11px; color: #94a3b8; font-family: "Courier New", monospace; }
+    .quick-account .qa-role { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
 
-    .quick-account .qa-name {
-      font-size: 13px;
-      font-weight: 600;
-      color: #1e293b;
-    }
-
-    .quick-account .qa-account {
-      font-size: 11px;
-      color: #94a3b8;
-      font-family: "Courier New", monospace;
-    }
-
-    .quick-account .qa-role {
-      font-size: 10px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 4px;
-    }
-
-    .qa-role.teacher {
-      background: #fef3c7;
-      color: #92400e;
-    }
-
-    .qa-role.student {
-      background: #dbeafe;
-      color: #1e40af;
-    }
+    .qa-role.teacher { background: #fef3c7; color: #92400e; }
+    .qa-role.student { background: #dbeafe; color: #1e40af; }
 
     /* 错误提示 */
     .error-msg {
@@ -289,9 +346,7 @@
       animation: shake 0.3s ease;
     }
 
-    .error-msg.show {
-      display: block;
-    }
+    .error-msg.show { display: block; }
 
     @keyframes shake {
       0%, 100% { transform: translateX(0); }
@@ -302,7 +357,7 @@
     /* 底部信息 */
     .login-footer {
       text-align: center;
-      margin-top: 20px;
+      margin-top: 24px;
       font-size: 12px;
       color: #94a3b8;
     }
@@ -320,46 +375,91 @@
       margin-right: 8px;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* 系统特色标签 */
-    .features {
-      display: flex;
-      justify-content: center;
-      gap: 16px;
-      margin-top: 16px;
-    }
-
-    .feature-badge {
-      font-size: 11px;
-      color: #64748b;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .feature-badge .dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #10b981;
+    /* ===== 移动端响应式 ===== */
+    @media (max-width: 768px) {
+      body { flex-direction: column; overflow: auto; }
+      .hero-side { display: none; }
+      .form-side { width: 100%; max-width: 100%; min-height: 100vh; padding: 20px; }
     }
   </style>
 </head>
 <body>
-  <div class="bg-gradient"></div>
-  <div class="bg-orb bg-orb-1"></div>
-  <div class="bg-orb bg-orb-2"></div>
-  <div class="bg-orb bg-orb-3"></div>
+  <!-- ===== 左侧：主题展示区 ===== -->
+  <div class="hero-side">
+    <div class="hero-orb hero-orb-1"></div>
+    <div class="hero-orb hero-orb-2"></div>
+    <div class="hero-orb hero-orb-3"></div>
 
-  <div class="login-container">
-    <div class="login-card">
-      <div class="login-logo">
-        <span class="icon">🚨</span>
-        <h1>应急决策教学系统</h1>
-        <div class="subtitle">Emergency Decision Teaching Platform</div>
+    <div class="hero-content">
+      <div class="hero-logo">🚨</div>
+      <h1 class="hero-title">应急决策<br>智能体教学系统</h1>
+      <p class="hero-subtitle">Emergency Decision Teaching Platform</p>
+
+      <!-- 流程图导航 -->
+      <div class="hero-flow">
+        <div class="flow-step">
+          <div class="flow-icon">🌐</div>
+          <div class="flow-step-title">灾害预警</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">🔍</div>
+          <div class="flow-step-title">灾害查询</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">📝</div>
+          <div class="flow-step-title">场景生成</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">📤</div>
+          <div class="flow-step-title">任务分发</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">⚡</div>
+          <div class="flow-step-title">学生推演</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">📋</div>
+          <div class="flow-step-title">AI评分</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">📊</div>
+          <div class="flow-step-title">素养画像</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">🔬</div>
+          <div class="flow-step-title">案例生成</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">🧠</div>
+          <div class="flow-step-title">知识库建设</div>
+        </div>
+      </div>
+
+      <div class="hero-tags">
+        <span class="hero-tag"><span class="dot"></span> 实时灾害数据接入</span>
+        <span class="hero-tag"><span class="dot"></span> 9步教学闭环流程</span>
+        <span class="hero-tag"><span class="dot"></span> 无人机应急运输</span>
+        <span class="hero-tag"><span class="dot"></span> 政府签约应急企业</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 右侧：登录表单区 ===== -->
+  <div class="form-side">
+    <div class="login-container">
+      <div class="login-header">
+        <h2>欢迎登录</h2>
+        <p>请选择角色并输入账号密码</p>
       </div>
 
       <!-- 角色切换 -->
@@ -392,16 +492,11 @@
       <div class="quick-login">
         <div class="quick-login-title">— 演示账号，点击一键登录 —</div>
         <div id="quickAccounts"></div>
-      </div>
-
-      <div class="features">
-        <span class="feature-badge"><span class="dot"></span> 教·学·育·评 四支柱</span>
-        <span class="feature-badge"><span class="dot"></span> 实时灾害数据</span>
-        <span class="feature-badge"><span class="dot"></span> 三策略教学</span>
+        <div id="studentNote" style="display:none; margin-top:8px; font-size:11px; color:#94a3b8; text-align:center;">student06 ~ student20 密码同为 stud123</div>
       </div>
 
       <div class="login-footer">
-        v1.0 | 应急决策智能体教学系统 &copy; 2026
+        v2.0 | 七模块教学系统 &copy; 2026
       </div>
     </div>
   </div>
@@ -414,9 +509,26 @@
         { username: "teacher02", password: "teach456", name: "李老师", avatar: "👩‍🏫" },
       ],
       student: [
-        { username: "student01", password: "stud123", name: "张同学", avatar: "👨‍🎓" },
-        { username: "student02", password: "stud456", name: "刘同学", avatar: "👩‍🎓" },
-        { username: "student03", password: "stud789", name: "陈同学", avatar: "🧑‍🎓" },
+        { username: "student01", password: "stud123", name: "张伟", avatar: "🧑‍🎓" },
+        { username: "student02", password: "stud123", name: "刘思怡", avatar: "👩‍🎓" },
+        { username: "student03", password: "stud123", name: "陈浩宇", avatar: "🧑‍🎓" },
+        { username: "student04", password: "stud123", name: "杨雨桐", avatar: "👩‍🎓" },
+        { username: "student05", password: "stud123", name: "赵磊", avatar: "🧑‍🎓" },
+        { username: "student06", password: "stud123", name: "黄家俊", avatar: "🧑‍🎓" },
+        { username: "student07", password: "stud123", name: "周若琳", avatar: "👩‍🎓" },
+        { username: "student08", password: "stud123", name: "吴俊杰", avatar: "🧑‍🎓" },
+        { username: "student09", password: "stud123", name: "徐嘉乐", avatar: "🧑‍🎓" },
+        { username: "student10", password: "stud123", name: "孙悦", avatar: "👩‍🎓" },
+        { username: "student11", password: "stud123", name: "马志远", avatar: "🧑‍🎓" },
+        { username: "student12", password: "stud123", name: "胡瑞阳", avatar: "🧑‍🎓" },
+        { username: "student13", password: "stud123", name: "朱慧琳", avatar: "👩‍🎓" },
+        { username: "student14", password: "stud123", name: "林涛", avatar: "🧑‍🎓" },
+        { username: "student15", password: "stud123", name: "何诗涵", avatar: "👩‍🎓" },
+        { username: "student16", password: "stud123", name: "罗浩天", avatar: "🧑‍🎓" },
+        { username: "student17", password: "stud123", name: "梁梓轩", avatar: "🧑‍🎓" },
+        { username: "student18", password: "stud123", name: "宋佳怡", avatar: "👩‍🎓" },
+        { username: "student19", password: "stud123", name: "郑凯", avatar: "🧑‍🎓" },
+        { username: "student20", password: "stud123", name: "韩雨萱", avatar: "👩‍🎓" },
       ],
     };
 
@@ -424,17 +536,15 @@
 
     function switchRole(role) {
       currentRole = role;
-      // 切换Tab样式
       document.querySelectorAll(".role-tab").forEach(tab => {
         tab.classList.toggle("active", tab.dataset.role === role);
       });
-      // 清空输入框
       document.getElementById("username").value = "";
       document.getElementById("password").value = "";
-      // 隐藏错误
       hideError();
-      // 更新快速登录列表
       renderQuickAccounts();
+      // 显示学生账号提示
+      document.getElementById("studentNote").style.display = currentRole === "student" ? "" : "none";
     }
 
     function renderQuickAccounts() {
@@ -503,7 +613,6 @@
           return false;
         }
 
-        // 登录成功，跳转
         btn.innerHTML = "✓ 登录成功";
         setTimeout(() => {
           window.location.href = data.redirect || "/";
@@ -518,21 +627,16 @@
       return false;
     }
 
-    // 页面加载时检查是否已登录
     (async function checkSession() {
       try {
         const resp = await fetch("/api/session");
         const data = await resp.json();
         if (data.logged_in) {
-          // 已登录则跳转
-          window.location.href = data.user.role === "teacher" ? "/dashboard" : "/decision";
+          window.location.href = "/";
         }
-      } catch (e) {
-        // 忽略，留在登录页
-      }
+      } catch (e) {}
     })();
 
-    // 初始化快速登录列表
     renderQuickAccounts();
   </script>
 </body>

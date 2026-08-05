@@ -22,6 +22,10 @@ class DisasterType(str, Enum):
     LANDSLIDE = "landslide"
     MUDSLIDE = "mudslide"
     FLOOD = "flood"
+    SNOWSTORM = "snowstorm"
+    SANDSTORM = "sandstorm"
+    WILDFIRE = "wildfire"
+    TSUNAMI = "tsunami"
 
 
 class VehicleType(str, Enum):
@@ -116,6 +120,7 @@ class StrategyMode(str, Enum):
     TIME_PRESSURE = "time_pressure"
     AGENT_ADVERSARIAL = "agent_adversarial"
     BUDGET_CONSTRAINED = "budget_constrained"
+    EMERGENCY_RELIEF = "emergency_relief"
 
 
 # ============================================================
@@ -300,6 +305,48 @@ class LandslideData:
 
 
 @dataclass
+class SnowstormData:
+    center_city: str
+    center_lat: float
+    center_lng: float
+    snowfall_cm: float = 30.0
+    temperature_min: float = -15.0
+    affected_duration_hours: float = 48.0
+    affected_areas: list[str] = field(default_factory=list)
+
+
+@dataclass
+class SandstormData:
+    center_city: str
+    center_lat: float
+    center_lng: float
+    wind_force_level: float = 9.0
+    visibility_m: float = 500.0
+    affected_duration_hours: float = 12.0
+    affected_areas: list[str] = field(default_factory=list)
+
+
+@dataclass
+class WildfireData:
+    center_city: str
+    center_lat: float
+    center_lng: float
+    fire_level: int = 3
+    burned_area_ha: float = 500.0
+    affected_areas: list[str] = field(default_factory=list)
+
+
+@dataclass
+class TsunamiData:
+    center_city: str
+    center_lat: float
+    center_lng: float
+    wave_height_m: float = 5.0
+    warning_level: str = "red"
+    affected_areas: list[str] = field(default_factory=list)
+
+
+@dataclass
 class Disaster:
     disaster_id: str
     disaster_type: DisasterType
@@ -307,6 +354,11 @@ class Disaster:
     rainstorm: Optional[RainstormData] = None
     typhoon: Optional[TyphoonData] = None
     landslide: Optional[LandslideData] = None
+    snowstorm: Optional[SnowstormData] = None
+    sandstorm: Optional[SandstormData] = None
+    wildfire: Optional[WildfireData] = None
+    tsunami: Optional[TsunamiData] = None
+    _radius_km: float = 0.0
 
     @property
     def center_lat(self) -> float:
@@ -318,6 +370,14 @@ class Disaster:
             return self.typhoon.center_lat
         if self.landslide:
             return self.landslide.location_lat
+        if self.snowstorm:
+            return self.snowstorm.center_lat
+        if self.sandstorm:
+            return self.sandstorm.center_lat
+        if self.wildfire:
+            return self.wildfire.center_lat
+        if self.tsunami:
+            return self.tsunami.center_lat
         return 0.0
 
     @property
@@ -330,18 +390,40 @@ class Disaster:
             return self.typhoon.center_lng
         if self.landslide:
             return self.landslide.location_lng
+        if self.snowstorm:
+            return self.snowstorm.center_lng
+        if self.sandstorm:
+            return self.sandstorm.center_lng
+        if self.wildfire:
+            return self.wildfire.center_lng
+        if self.tsunami:
+            return self.tsunami.center_lng
         return 0.0
 
     @property
     def influence_radius_km(self) -> float:
+        # 对于自带半径的灾害类型(地震/台风)，取自带半径和场景覆盖半径的最大值
         if self.earthquake:
-            return self.earthquake.influence_radius_km
+            eq_radius = self.earthquake.influence_radius_km or 50.0
+            return max(eq_radius, self._radius_km) if self._radius_km > 0 else eq_radius
         if self.typhoon:
-            return self.typhoon.influence_radius_km
+            tf_radius = self.typhoon.influence_radius_km or 80.0
+            return max(tf_radius, self._radius_km) if self._radius_km > 0 else tf_radius
+        # 对于没有自带半径的灾害类型，优先使用场景数据中配置的半径
+        if self._radius_km > 0:
+            return self._radius_km
         if self.rainstorm:
             return 50.0  # 默认暴雨影响半径
         if self.landslide:
-            return 20.0  # 默认滑坡影响半径
+            return 80.0  # 默认滑坡影响半径
+        if self.snowstorm:
+            return 80.0  # 默认暴雪影响半径
+        if self.sandstorm:
+            return 80.0  # 默认沙尘暴影响半径
+        if self.wildfire:
+            return 50.0  # 默认森林火灾影响半径
+        if self.tsunami:
+            return 80.0  # 默认海啸影响半径
         return 50.0
 
     @property
@@ -354,6 +436,14 @@ class Disaster:
             return self.typhoon.affected_areas
         if self.landslide:
             return self.landslide.affected_areas
+        if self.snowstorm:
+            return self.snowstorm.affected_areas
+        if self.sandstorm:
+            return self.sandstorm.affected_areas
+        if self.wildfire:
+            return self.wildfire.affected_areas
+        if self.tsunami:
+            return self.tsunami.affected_areas
         return []
 
 

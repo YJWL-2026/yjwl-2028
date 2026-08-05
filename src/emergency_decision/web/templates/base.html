@@ -17,36 +17,211 @@
     <span class="mobile-avatar" id="mobileAvatar">👤</span>
   </div>
 
+  <!-- 移动端底部外部工具条 -->
+  <div class="mobile-toolbar" id="mobileToolbar">
+    <a href="/" class="nav-item">
+      <span class="mt-icon">🏠</span>首页
+    </a>
+    <span class="mt-divider"></span>
+    <a href="https://workbrain.cn/room/#/showRoom?applyId=13240262269947205&language=zh_CN" target="_blank">
+      <span class="mt-icon">🤖</span>物流助手
+    </a>
+    <span class="mt-divider"></span>
+    <a href="https://www.coze.cn/store/agent/7594482397220519945?bot_id=true" target="_blank">
+      <span class="mt-icon">🏭</span>物资查询
+    </a>
+  </div>
+
   <!-- 侧边栏遮罩 -->
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar(false)"></div>
 
   <div class="app-layout">
+    <!-- ====== 顶部七大模块导航栏 ====== -->
+    <div class="top-module-bar" id="topModuleBar">
+      <div class="top-module-bar-inner">
+        <a href="/" class="top-logo" onclick="closeAllModules()">
+          <span style="font-size:20px;">🚨</span>
+          <span class="top-logo-text">应急决策教学系统</span>
+        </a>
+        <div class="top-modules">
+          {% if current_user and current_user.role == 'teacher' %}
+          <a href="/editor" class="top-module {% if active_page == 'editor' %}tm-active{% endif %}" data-color="indigo">
+            <span class="tm-char">教</span>
+            <span class="tm-label">场景编辑</span>
+          </a>
+          {% else %}
+          <a href="/scenarios" class="top-module {% if active_page == 'scenarios' %}tm-active{% endif %}" data-color="indigo">
+            <span class="tm-char">教</span>
+            <span class="tm-label">场景简介</span>
+          </a>
+          {% endif %}
+          <a href="/decision" class="top-module {% if active_page == 'decision' %}tm-active{% endif %}" data-color="green">
+            <span class="tm-char">学</span>
+            <span class="tm-label">实战决策</span>
+          </a>
+          <a href="/profile" class="top-module {% if active_page == 'profile' %}tm-active{% endif %}" data-color="amber">
+            <span class="tm-char">育</span>
+            <span class="tm-label">素养画像</span>
+          </a>
+          {% if current_user and current_user.role == 'teacher' %}
+          <a href="/dashboard" class="top-module {% if active_page == 'dashboard' %}tm-active{% endif %}" data-color="red">
+            <span class="tm-char">评</span>
+            <span class="tm-label">自动评分</span>
+          </a>
+          {% else %}
+          <a href="/my-scores" class="top-module {% if active_page == 'my-scores' %}tm-active{% endif %}" data-color="red">
+            <span class="tm-char">评</span>
+            <span class="tm-label">我的成绩</span>
+          </a>
+          {% endif %}
+          <a href="/manage" class="top-module {% if active_page == 'manage' %}tm-active{% endif %}" data-color="cyan">
+            <span class="tm-char">管</span>
+            <span class="tm-label">课程管理</span>
+          </a>
+          <a href="/research" class="top-module {% if active_page == 'research' %}tm-active{% endif %}" data-color="purple">
+            <span class="tm-char">研</span>
+            <span class="tm-label">案例生成</span>
+          </a>
+          <a href="/knowledge" class="top-module {% if active_page == 'knowledge' %}tm-active{% endif %}" data-color="teal">
+            <span class="tm-char">建</span>
+            <span class="tm-label">知识库</span>
+          </a>
+        </div>
+        <div class="top-user-box" id="topUserBox" style="display:none;">
+          <span id="topUserAvatar" style="font-size:18px;"></span>
+          <div style="flex:1; min-width:0; overflow:hidden;">
+            <div id="topUserName" style="font-size:12px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
+            <div id="topUserRole" style="font-size:10px; color:#94a3b8;"></div>
+          </div>
+          <button onclick="doLogout()" style="border:none; background:rgba(239,68,68,0.15); color:#f87171; font-size:12px; padding:4px 10px; border-radius:6px; cursor:pointer; white-space:nowrap;" onmouseover="this.style.background='rgba(239,68,68,0.25)'" onmouseout="this.style.background='rgba(239,68,68,0.15)'">退出</button>
+        </div>
+      </div>
+    </div>
+    <style>
+      .top-module-bar {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 150;
+        background: linear-gradient(135deg, #0f172a 0%, #1a1d2e 100%);
+        box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      .top-module-bar-inner {
+        display: flex; align-items: center; gap: 16px; padding: 0 20px; height: 56px;
+        max-width: 100%; overflow-x: auto;
+      }
+      .top-logo {
+        display: flex; align-items: center; gap: 8px;
+        text-decoration: none; white-space: nowrap; flex-shrink: 0;
+      }
+      .top-logo-text {
+        font-size: 15px; font-weight: 700; color: #fff; letter-spacing: 0.5px;
+      }
+      .top-modules {
+        display: flex; align-items: center; gap: 4px; flex: 1;
+      }
+      .top-module {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        padding: 6px 14px; border-radius: 10px; text-decoration: none;
+        transition: all 0.2s ease; position: relative; min-width: 64px;
+      }
+      .top-module:hover { background: rgba(255,255,255,0.08); }
+      .top-module.tm-active { background: rgba(255,255,255,0.12); }
+      .top-module.tm-active::after {
+        content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+        width: 24px; height: 3px; border-radius: 2px;
+      }
+      .top-module[data-color="indigo"].tm-active::after { background: #6366f1; }
+      .top-module[data-color="green"].tm-active::after { background: #10b981; }
+      .top-module[data-color="amber"].tm-active::after { background: #f59e0b; }
+      .top-module[data-color="red"].tm-active::after { background: #ef4444; }
+      .top-module[data-color="cyan"].tm-active::after { background: #06b6d4; }
+      .top-module[data-color="purple"].tm-active::after { background: #a855f7; }
+      .top-module[data-color="teal"].tm-active::after { background: #14b8a6; }
+      .tm-char {
+        font-size: 20px; font-weight: 800; line-height: 1.2;
+      }
+      .top-module[data-color="indigo"] .tm-char { color: #818cf8; }
+      .top-module[data-color="green"] .tm-char { color: #34d399; }
+      .top-module[data-color="amber"] .tm-char { color: #fbbf24; }
+      .top-module[data-color="red"] .tm-char { color: #f87171; }
+      .top-module[data-color="cyan"] .tm-char { color: #22d3ee; }
+      .top-module[data-color="purple"] .tm-char { color: #c084fc; }
+      .top-module[data-color="teal"] .tm-char { color: #2dd4bf; }
+      .tm-label {
+        font-size: 10px; color: #94a3b8; margin-top: 1px; white-space: nowrap;
+      }
+      .top-module:hover .tm-label { color: #e2e8f0; }
+      .top-user-box {
+        display: flex; align-items: center; gap: 8px; padding: 4px 10px;
+        background: rgba(255,255,255,0.06); border-radius: 10px; flex-shrink: 0;
+      }
+      /* 移动端：顶部栏可横向滚动 */
+    @media (max-width: 768px) {
+      .top-logo-text { display: none; }
+      .top-module-bar-inner { gap: 8px; padding: 0 8px; }
+      .top-module { padding: 6px 10px; min-width: 48px; }
+      .top-user-box { display: none !important; }
+    }
+
+    /* 移动端底部工具条 */
+    .mobile-toolbar {
+      display: none;
+    }
+    @media (max-width: 768px) {
+      .mobile-toolbar {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 140;
+        background: linear-gradient(180deg, #1e293b, #0f172a);
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding: 8px 10px;
+        gap: 8px;
+        justify-content: center;
+        box-shadow: 0 -2px 12px rgba(0,0,0,0.3);
+      }
+      .mobile-toolbar a {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        text-decoration: none;
+        color: #cbd5e1;
+        font-size: 10px;
+        padding: 4px 12px;
+        border-radius: 8px;
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+      .mobile-toolbar a:hover {
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+      }
+      .mobile-toolbar .mt-icon {
+        font-size: 18px;
+      }
+      .mobile-toolbar .mt-divider {
+        width: 1px;
+        background: rgba(255,255,255,0.15);
+        margin: 0 4px;
+      }
+      /* 给主内容区加底部padding，避免被工具条遮挡 */
+      .app-layout .main-content {
+        padding-bottom: 70px !important;
+      }
+    }
+    </style>
+
     <!-- 侧边栏 -->
     <nav class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <h1>应急决策教学系统</h1>
-        <div class="subtitle">Emergency Decision Teaching</div>
+        <div class="subtitle" style="margin-top:0;">辅助工具与数据</div>
       </div>
       <div class="sidebar-nav">
         <a href="/" class="nav-item {% if active_page == 'home' %}active{% endif %}">
           <span class="icon">🏠</span> <span>首页</span>
         </a>
-        {% if current_user and current_user.role == 'teacher' %}
-        <a href="/editor" class="nav-item {% if active_page == 'editor' %}active{% endif %}">
-          <span class="icon">📝</span> <span>场景编辑器（教）</span>
-        </a>
-        {% endif %}
-        <a href="/decision" class="nav-item {% if active_page == 'decision' %}active{% endif %}">
-          <span class="icon">⚡</span> <span>学生决策（学）</span>
-        </a>
-        <a href="/profile" class="nav-item {% if active_page == 'profile' %}active{% endif %}">
-          <span class="icon">📊</span> <span>素养画像（育）</span>
-        </a>
-        {% if current_user and current_user.role == 'teacher' %}
-        <a href="/dashboard" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
-          <span class="icon">📋</span> <span>教师后台（评）</span>
-        </a>
-        {% endif %}
         <a href="/disaster-query" class="nav-item {% if active_page == 'disaster' %}active{% endif %}">
           <span class="icon">🌐</span> <span>灾害查询（实时数据）</span>
         </a>
@@ -58,26 +233,50 @@
         <a href="/company" class="nav-item {% if active_page == 'company' %}active{% endif %}">
           <span class="icon">🏢</span> <span>企业数据大屏</span>
         </a>
+        <a href="/mem" class="nav-item {% if active_page == 'mem' %}active{% endif %}">
+          <span class="icon">🏛️</span> <span>应急管理部信息</span>
+        </a>
+        <div style="padding:8px 16px; font-size:11px; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-top:8px;">外部工具</div>
+        <a href="https://workbrain.cn/room/#/showRoom?applyId=13240262269947205&language=zh_CN" target="_blank" class="nav-item" style="border-left:3px solid #10b981;">
+          <span class="icon">🤖</span> <span>应急物流小助手</span>
+        </a>
+        <a href="https://www.coze.cn/store/agent/7594482397220519945?bot_id=true" target="_blank" class="nav-item" style="border-left:3px solid #f59e0b;">
+          <span class="icon">🏭</span> <span>救灾物资工厂生产查询</span>
+        </a>
       </div>
       <div class="sidebar-footer">
-        <div id="userBox" style="margin-bottom:12px; display:none;">
-          <div style="display:flex; align-items:center; gap:8px; padding:8px 12px; background:rgba(255,255,255,0.06); border-radius:8px;">
-            <span id="userAvatar" style="font-size:20px;"></span>
-            <div style="flex:1; min-width:0;">
-              <div id="userName" style="font-size:13px; font-weight:600; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></div>
-              <div id="userRole" style="font-size:11px; color:#9ca3af;"></div>
-            </div>
-          </div>
-          <button onclick="doLogout()" style="width:100%; padding:7px; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; background:rgba(239,68,68,0.15); color:#f87171; transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.25)'" onmouseout="this.style.background='rgba(239,68,68,0.15)'">退出登录</button>
-        </div>
-        v1.0 | 四支柱教学系统
+        v2.0 | 七支柱教学系统
       </div>
     </nav>
 
     <!-- 主内容区 -->
     <main class="main-content">
+      <!-- 全页面红色闪烁预警遮罩 -->
+      <div id="full-page-alert" style="display:none; position:fixed; inset:0; z-index:99998; pointer-events:none; background:rgba(220,38,38,0); transition:background 0.3s;"></div>
+      <style>
+        @keyframes fullPageFlash {
+          0%, 100% { background: rgba(220,38,38,0.05); }
+          50% { background: rgba(220,38,38,0.25); }
+        }
+        #full-page-alert.active {
+          display: block !important;
+          animation: fullPageFlash 1s ease-in-out infinite;
+        }
+        /* 边框闪烁 */
+        #full-page-alert.border-active {
+          display: block !important;
+          background: transparent !important;
+          box-shadow: inset 0 0 0 4px rgba(220,38,38,0.6);
+          animation: borderFlash 0.8s ease-in-out infinite;
+        }
+        @keyframes borderFlash {
+          0%, 100% { box-shadow: inset 0 0 0 4px rgba(220,38,38,0.3); }
+          50% { box-shadow: inset 0 0 0 6px rgba(220,38,38,0.7), inset 0 0 40px rgba(220,38,38,0.3); }
+        }
+      </style>
+
       <!-- 灾害预警动画条 -->
-      <div id="early-warning-bar" style="display:none; position:fixed; top:0; right:0; left:240px; z-index:9999; background:linear-gradient(90deg, #dc2626, #f59e0b, #dc2626); background-size:200% 100%; animation:warningSlide 0.5s ease-out, warningPulse 2s linear infinite; color:#fff; padding:10px 20px; font-weight:600; box-shadow:0 2px 12px rgba(0,0,0,0.3); cursor:pointer;" onclick="dismissWarning()">
+      <div id="early-warning-bar" style="display:none; position:fixed; top:0; right:0; left:240px; z-index:99999; background:linear-gradient(90deg, #dc2626, #f59e0b, #dc2626); background-size:200% 100%; animation:warningSlide 0.5s ease-out, warningPulse 2s linear infinite; color:#fff; padding:10px 20px; font-weight:600; box-shadow:0 2px 12px rgba(0,0,0,0.3); cursor:pointer;" onclick="dismissWarning()">
         <div style="display:flex; align-items:center; gap:12px;">
           <span style="font-size:24px; animation:warningBlink 0.8s ease-in-out infinite;">⚠️</span>
           <div id="warning-content" style="flex:1;"></div>
@@ -88,6 +287,11 @@
         @keyframes warningSlide { from { transform: translateY(-100%); } to { transform: translateY(0); } }
         @keyframes warningPulse { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
         @keyframes warningBlink { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+      </style>
+      <style>
+        .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb; }
+        .btn-danger { background: #dc2626 !important; color: #fff !important; border: none; }
+        .btn-danger:hover { background: #b91c1c !important; }
       </style>
       {% block content %}{% endblock %}
     </main>
@@ -135,6 +339,14 @@
           document.getElementById('userName').textContent = user.name || user.username;
           document.getElementById('userRole').textContent = user.role === 'teacher' ? '教师' : '学生';
           box.style.display = '';
+        }
+        // 顶部栏用户信息
+        const topBox = document.getElementById('topUserBox');
+        if (topBox) {
+          document.getElementById('topUserAvatar').textContent = user.avatar || '👤';
+          document.getElementById('topUserName').textContent = user.name || user.username;
+          document.getElementById('topUserRole').textContent = user.role === 'teacher' ? '教师' : '学生';
+          topBox.style.display = 'flex';
         }
         const mobileAvatar = document.getElementById('mobileAvatar');
         if (mobileAvatar) mobileAvatar.textContent = user.avatar || '👤';
@@ -191,6 +403,23 @@
       showToast(context + '失败: ' + e.message, true);
     }
 
+    // ---- 通用弹窗 ----
+    function showModal(bodyHTML) {
+      const overlay = document.createElement('div');
+      overlay.id = '__modal_overlay__';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;';
+      overlay.onclick = function(e) { if (e.target === overlay) closeModal(); };
+      const box = document.createElement('div');
+      box.style.cssText = 'background:#fff;border-radius:16px;padding:24px;max-width:500px;width:90%;max-height:85vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,0.2);';
+      box.innerHTML = bodyHTML;
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+    }
+    function closeModal() {
+      const overlay = document.getElementById('__modal_overlay__');
+      if (overlay) overlay.remove();
+    }
+
     function formatNum(n) {
       return new Intl.NumberFormat('zh-CN').format(n);
     }
@@ -206,7 +435,9 @@
     function getDisasterName(type) {
       const names = {
         earthquake: '地震', rainstorm: '暴雨', typhoon: '台风',
-        landslide: '山体滑坡', mudslide: '泥石流', flood: '洪水'
+        landslide: '山体滑坡', mudslide: '泥石流', flood: '洪水',
+        snowstorm: '暴雪', sandstorm: '沙尘暴', wildfire: '森林火灾',
+        tsunami: '海啸', geological: '地质灾害', other: '其他灾害'
       };
       return names[type] || type;
     }
@@ -215,7 +446,8 @@
       const names = {
         time_pressure: '人机竞速',
         agent_adversarial: '智能体对抗',
-        budget_constrained: '有限预算博弈'
+        budget_constrained: '有限预算博弈',
+        emergency_relief: '救灾决策'
       };
       return names[mode] || mode;
     }
@@ -227,6 +459,11 @@
     function dismissWarning() {
       const bar = document.getElementById('early-warning-bar');
       if (bar) bar.style.display = 'none';
+      const fullAlert = document.getElementById('full-page-alert');
+      if (fullAlert) {
+        fullAlert.classList.remove('active', 'border-active');
+        fullAlert.style.display = 'none';
+      }
     }
 
     async function pollLatestDisasters() {
@@ -247,15 +484,36 @@
         // 显示预警条
         const bar = document.getElementById('early-warning-bar');
         const content = document.getElementById('warning-content');
+        const fullAlert = document.getElementById('full-page-alert');
         if (!bar || !content) return;
 
         const d = newDisasters[0];
         content.innerHTML = `<span style="font-size:14px;">${d.icon} <b>${d.title}</b> &mdash; ${d.detail} (${d.time})</span>`;
         bar.style.display = '';
-        bar.style.left = '240px';
 
-        // 5秒后自动消失
-        setTimeout(() => { if (bar) bar.style.display = 'none'; }, 8000);
+        // 移动端调整
+        if (window.innerWidth <= 768) {
+          bar.style.left = '0';
+          bar.style.top = '56px';
+        } else {
+          bar.style.left = '240px';
+          bar.style.top = '56px';
+        }
+
+        // 触发全页面红色闪烁
+        if (fullAlert) {
+          fullAlert.style.display = 'block';
+          fullAlert.classList.add('active', 'border-active');
+        }
+
+        // 8秒后自动消失
+        setTimeout(() => {
+          if (bar) bar.style.display = 'none';
+          if (fullAlert) {
+            fullAlert.classList.remove('active', 'border-active');
+            fullAlert.style.display = 'none';
+          }
+        }, 8000);
       } catch (e) {
         // 静默失败
       }

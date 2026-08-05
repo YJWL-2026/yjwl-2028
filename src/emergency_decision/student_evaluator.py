@@ -59,10 +59,10 @@ class StudentPlanEvaluator:
         Returns:
             对比结果dict (含optimal_plan, student_plan, diff, analysis)
         """
-        # 1. 评估学生方案
+        # 1. 评估学生方案（传入optimal_plan做相对评分）
         student_result = self._evaluate_student_actions(
             submission, cargo_list, config,
-            available_vehicles, available_warehouses)
+            available_vehicles, available_warehouses, optimal_plan)
 
         # 2. 与最优方案对比
         diff = self._calc_diff(optimal_plan, student_result)
@@ -81,8 +81,9 @@ class StudentPlanEvaluator:
     def _evaluate_student_actions(self, submission: StudentSubmission,
                                     cargo_list: list[Cargo],
                                     config: EvaluationConfig,
-                                    av: int, aw: int) -> dict:
-        """评估学生提交的动作"""
+                                    av: int, aw: int,
+                                    optimal_plan: DecisionPlan = None) -> dict:
+        """评估学生提交的动作 — 与最优方案对比评分"""
         cargo_map = {c.cargo_id: c for c in cargo_list}
 
         total_cost = 0.0
@@ -96,6 +97,15 @@ class StudentPlanEvaluator:
         # 可行性校验
         feasibility_issues = []
 
+        # 最优方案数据（用于相对评分）
+        opt_cost = optimal_plan.total_cost if optimal_plan else config.benchmark_cost
+        opt_vehicles = optimal_plan.vehicles_used if optimal_plan else 0
+        opt_delivered = optimal_plan.cargo_delivered if optimal_plan else 0
+        opt_actions_count = len(optimal_plan.actions) if optimal_plan else 0
+
+        # 受影响的货物总数（最优方案需要处理的）
+        affected_cargo_count = max(opt_actions_count, opt_delivered, 1)
+
         for action in submission.actions:
             cargo = cargo_map.get(action.cargo_id)
             if not cargo:
@@ -105,16 +115,20 @@ class StudentPlanEvaluator:
                 delivered += 1
                 if action.vehicle_id:
                     vehicles_used.add(action.vehicle_id)
-                # 简化成本估算
-                cost = len(action.route) * 8.0 * 10  # 粗估
+                # 运输成本: 路线距离 × 单价 (与引擎一致)
+                route_nodes = len(action.route) if action.route else 2
+                cost = route_nodes * 8.0  # 每段路8元
                 total_cost += cost
-                total_delay += 0  # 简化
+                # 延迟估算: 如果提交时间>120秒，开始累计延迟
+                if submission.submit_time_offset_sec > 120:
+                    total_delay += (submission.submit_time_offset_sec - 120) / 60.0 * 0.5
 
             elif action.action_type == ActionPlanType.WAREHOUSE_TRANSFER:
                 stored += 1
                 if action.warehouse_id:
                     warehouses_used.add(action.warehouse_id)
-                cost = cargo.volume_m3 * 2.5  # 简化仓储成本
+                # 仓储成本: 货物体积 × 仓储单价 (与引擎一致)
+                cost = cargo.volume_m3 * 2.5
                 total_cost += cost
 
             elif action.action_type == ActionPlanType.ABANDON:
@@ -124,25 +138,87 @@ class StudentPlanEvaluator:
                     abandoned += 1
                     total_cost += cargo.value_yuan
 
-        # 评分
+        # ===== 评分维度 =====
+
+        # 1. 时效性 (30%): 基于提交时间和延迟
+        # 提交越快分越高; 超过预期时间扣分
+        submit_sec = submission.submit_time_offset_sec
+        if submit_sec <= 60:
+            time_score = 100
+        elif submit_sec <= 180:
+            time_score = 100 - (submit_sec - 60) * 0.3  # 60-180秒: 100→64
+        elif submit_sec <= 300:
+            time_score = 64 - (submit_sec - 180) * 0.2  # 180-300秒: 64→40
+        else:
+            time_score = max(10, 40 - (submit_sec - 300) * 0.1)  # 300秒+: 递减
+        # 延迟扣分
+        time_score = max(0, time_score - total_delay * 10)
         timeliness = DimensionScore(
-            score=max(0, 100 - total_delay * 10),
-            reason=f"超时{total_delay:.1f}小时" if total_delay > 0 else "按时送达"
+            score=round(time_score, 1),
+            reason=f"提交用时{submit_sec:.0f}秒" + (f", 延迟{total_delay:.1f}小时" if total_delay > 0 else "")
         )
+
+        # 2. 经济性 (25%: 与最优方案成本对比
+        # 学生成本 vs 最优成本, 越接近最优分越高
+        if opt_cost > 0:
+            if total_cost <= opt_cost:
+                # 成本低于或等于最优 → 满分(但需检查是否漏处理货物)
+                handled = delivered + stored
+                if handled < affected_cargo_count:
+                    # 漏处理货物: 成本低是因为没干活, 扣分
+                    ratio = handled / affected_cargo_count
+                    econ_score = round(100 * ratio, 1)
+                else:
+                    econ_score = 100.0
+            else:
+                # 成本高于最优 → 按比例扣分
+                ratio = opt_cost / total_cost
+                econ_score = round(100 * ratio, 1)
+        else:
+            # 最优方案零成本(无需操作)
+            if total_cost > 0:
+                # 学生做了不必要的操作
+                econ_score = max(20, 100 - total_cost / 100)
+            else:
+                econ_score = 100.0
         economic = DimensionScore(
-            score=round(min(100, 100 * config.benchmark_cost / max(total_cost, 1)), 1),
-            reason=f"总成本{total_cost:.0f}元"
+            score=econ_score,
+            reason=f"学生成本{total_cost:.0f}元 vs 最优{opt_cost:.0f}元"
         )
-        feasibility_score = 100
-        if feasibility_issues:
-            feasibility_score = max(0, 100 - len(feasibility_issues) * 30)
+
+        # 3. 可行性 (25%): 资源使用合理性 + 车辆多余调用扣分
+        feas_score = 100.0
+        # 车辆超限扣分
+        if len(vehicles_used) > av and av > 0:
+            feas_score -= 60
+        # 仓库超限扣分
+        if len(warehouses_used) > aw and aw > 0:
+            feas_score -= 40
+        # 比最优方案多调用的车辆扣分
+        extra_vehicles = len(vehicles_used) - opt_vehicles
+        if extra_vehicles > 0:
+            feas_score -= extra_vehicles * 8  # 每多一辆车扣8分
+        feas_score = max(0, feas_score)
         feasibility = DimensionScore(
-            score=feasibility_score,
-            reason="; ".join(feasibility_issues) if feasibility_issues else "方案可行"
+            score=round(feas_score, 1),
+            reason=f"使用{len(vehicles_used)}辆车(最优{opt_vehicles}辆)" +
+                   (f", 多用{extra_vehicles}辆" if extra_vehicles > 0 else "")
         )
+
+        # 4. 合规性 (20%): P1保障 + 货物覆盖率
+        compliance_score = 100.0
+        if feasibility_issues:
+            compliance_score = max(0, 100 - len(feasibility_issues) * 30)
+        # 货物覆盖率: 学生处理的货物数 vs 应处理货物数
+        handled = delivered + stored
+        if affected_cargo_count > 0 and handled < affected_cargo_count:
+            coverage = handled / affected_cargo_count
+            # 覆盖率不足扣分
+            compliance_score = min(compliance_score, round(100 * coverage, 1))
         compliance = DimensionScore(
-            score=100 if not feasibility_issues else 50,
-            reason="合规" if not feasibility_issues else "存在违规"
+            score=round(compliance_score, 1),
+            reason="; ".join(feasibility_issues) if feasibility_issues else
+                   (f"处理{handled}/{affected_cargo_count}单" if handled < affected_cargo_count else "合规")
         )
 
         breakdown = ScoreBreakdown(
@@ -155,9 +231,7 @@ class StudentPlanEvaluator:
         weights = config.weights
         total_score = self.scoring.calc_total_score(breakdown, weights)
 
-        # 加减分
-        if submission.is_first_submit:
-            total_score = min(100, total_score + 5)
+        # 超时大惩罚（>10分钟才扣，不额外奖励首次提交）
         if submission.submit_time_offset_sec > 600:
             total_score = max(0, total_score - 10)
 

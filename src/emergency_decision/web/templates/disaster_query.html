@@ -63,7 +63,7 @@
     <div class="card" style="padding:20px;">
       <h3 id="eq-detail-title"></h3>
       <div id="eq-detail-content"></div>
-      <button class="btn btn-success" onclick="importEarthquake()" id="eq-import-btn" style="margin-top:16px;">
+      <button class="btn btn-success" onclick="importEarthquake()" id="eq-import-btn" style="margin-top:16px; display:none;">
         📝 一键添加至场景
       </button>
     </div>
@@ -124,9 +124,15 @@
       <option value="洪水">洪水</option>
       <option value="地质灾害">地质灾害(滑坡/泥石流)</option>
       <option value="山洪">山洪</option>
+      <option value="地震">地震</option>
       <option value="台风">台风</option>
       <option value="大风">大风</option>
       <option value="雷电">雷电</option>
+      <option value="山体滑坡">山体滑坡</option>
+      <option value="暴雪">暴雪</option>
+      <option value="沙尘暴">沙尘暴</option>
+      <option value="森林火灾">森林火灾</option>
+      <option value="海啸">海啸</option>
       <option value="高温">高温</option>
     </select>
     <button class="btn btn-primary" onclick="loadAlerts()">🔍 查询预警信息</button>
@@ -330,6 +336,16 @@ function selectEarthquake(idx) {
   `;
 
   // 飞到地震位置
+  // 判断是否国内地震（中国大陆：纬度18-54，经度73-135）
+  const isDomestic = eq.latitude >= 18 && eq.latitude <= 54 && eq.longitude >= 73 && eq.longitude <= 135;
+  const importBtn = document.getElementById('eq-import-btn');
+  if (isDomestic) {
+    importBtn.style.display = '';
+    importBtn.title = '将此国内地震生成教学场景';
+  } else {
+    importBtn.style.display = 'none';
+  }
+
   if (eqMap) {
     eqMap.flyTo([eq.latitude, eq.longitude], 7, {duration: 1});
   }
@@ -498,8 +514,13 @@ async function selectTyphoon(idx) {
       const latest = trackPoints[trackPoints.length - 1];
       tyMap.flyTo([latest.lat, latest.lon], 6, {duration: 1});
     }
-    // 显示一键导入按钮
-    document.getElementById('ty-import-btn').style.display = '';
+    // 仅已登陆台风显示导入按钮（检查台风数据中的is_landed字段，或查看路径是否在中国沿海）
+    const isLanded = currentTyphoon?.is_landed || currentTyphoon?.landed ||
+      (trackPoints || []).some(p => p.lat >= 18 && p.lat <= 40 && p.lon >= 105 && p.lon <= 125);
+    document.getElementById('ty-import-btn').style.display = isLanded ? '' : 'none';
+    if (!isLanded) {
+      document.getElementById('ty-detail-content').innerHTML += '<p style="color:#d97706; font-size:12px; margin-top:10px;">⚠️ 该台风尚未登陆，无法制作教学场景</p>';
+    }
   } catch (e) {
     document.getElementById('ty-detail-content').innerHTML = '<div class="text-muted">获取路径详情失败: ' + e.message + '</div>';
   }
@@ -547,6 +568,8 @@ async function loadAlerts() {
     }
     listEl.innerHTML = alerts.map((a, i) => {
       const color = alertColor(a.level);
+      // 所有天气预警均可制作教学场景
+      const importBtnHTML = `<button class="btn btn-success btn-sm" onclick="event.stopPropagation(); importAlert('${a.alert_id}')" style="margin-left:4px; font-size:11px; padding:4px 10px;">📝 添加至场景</button>`;
       return `<div class="alert-item" data-idx="${i}"
         style="padding:10px 12px; margin-bottom:6px; border-radius:8px; cursor:pointer; border-left:4px solid ${color}; background:#f9fafb;"
         onmouseover="this.style.background='#f0f7ff'" onmouseout="this.style.background='#f9fafb'">
@@ -560,7 +583,7 @@ async function loadAlerts() {
           <span style="background:${color}; color:#fff; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">
             ${a.level || '未知'}
           </span>
-          <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); importAlert('${a.alert_id}')" style="margin-left:4px; font-size:11px; padding:4px 10px;">📝 添加至场景</button>
+          ${importBtnHTML}
         </div>
       </div>`;
     }).join('');
