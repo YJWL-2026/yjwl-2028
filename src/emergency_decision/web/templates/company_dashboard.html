@@ -1,0 +1,436 @@
+{% extends "base.html" %}
+{% block title %}企业数据大屏 - 安迅达物流{% endblock %}
+
+{% block content %}
+<div class="page-header" style="margin-bottom: 16px;">
+  <h2>🏢 <span id="company-name">安迅达物流集团</span></h2>
+  <p class="text-muted" id="company-desc">西南地区领先的第三方综合物流服务商</p>
+</div>
+
+<!-- 应急运力备选库标识 -->
+<div id="emergency-role-banner" style="display:none; background:linear-gradient(135deg, #fef3c7, #fde68a); border:2px solid #f59e0b; border-radius:12px; padding:16px 20px; margin-bottom:16px; display:flex; align-items:center; gap:16px;">
+  <div style="font-size:40px;">🏅</div>
+  <div style="flex:1;">
+    <div style="font-size:16px; font-weight:700; color:#92400e;" id="er-title">应急运力备选库签约企业</div>
+    <div style="font-size:13px; color:#78350f; margin-top:4px;" id="er-detail"></div>
+    <div id="er-responsibilities" style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;"></div>
+  </div>
+  <div style="text-align:center; padding:8px 16px; background:#fff; border-radius:10px; border:1px solid #f59e0b;">
+    <div style="font-size:24px; font-weight:800; color:#b45309;" id="er-activation-count">-</div>
+    <div style="font-size:11px; color:#92400e;">累计启动次数</div>
+  </div>
+</div>
+
+<!-- 企业概览卡片 -->
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:12px; margin-bottom:16px;">
+  <div class="card" style="padding:14px; text-align:center;">
+    <div class="text-muted text-sm">成立时间</div>
+    <div style="font-size:22px; font-weight:700;" id="c-founded">-</div>
+  </div>
+  <div class="card" style="padding:14px; text-align:center;">
+    <div class="text-muted text-sm">车队规模</div>
+    <div style="font-size:22px; font-weight:700; color:#3b82f6;" id="c-fleet">-</div>
+  </div>
+  <div class="card" style="padding:14px; text-align:center;">
+    <div class="text-muted text-sm">🚁 无人机编队</div>
+    <div style="font-size:22px; font-weight:700; color:#8b5cf6;" id="c-drone">-</div>
+  </div>
+  <div class="card" style="padding:14px; text-align:center;">
+    <div class="text-muted text-sm">仓储数量</div>
+    <div style="font-size:22px; font-weight:700; color:#10b981;" id="c-wh">-</div>
+  </div>
+  <div class="card" style="padding:14px; text-align:center;">
+    <div class="text-muted text-sm">服务城市</div>
+    <div style="font-size:22px; font-weight:700; color:#f59e0b;" id="c-cities">-</div>
+  </div>
+  <div class="card" style="padding:14px; text-align:center;">
+    <div class="text-muted text-sm">员工人数</div>
+    <div style="font-size:22px; font-weight:700; color:#8b5cf6;" id="c-emp">-</div>
+  </div>
+  <div class="card" style="padding:14px; text-align:center;">
+    <div class="text-muted text-sm">年营收</div>
+    <div style="font-size:22px; font-weight:700; color:#ef4444;" id="c-revenue">-</div>
+  </div>
+</div>
+
+<!-- 无人机编队详情 -->
+<div class="card" style="padding:16px; margin-bottom:16px;" id="drone-section">
+  <div style="font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+    <span style="font-size:18px;">🚁</span> 无人机设备编队
+  </div>
+  <div id="drone-fleet" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;"></div>
+</div>
+
+<div style="display:flex; gap:16px;">
+  <!-- 左侧：实时订单地图 -->
+  <div style="flex:1; min-width:0;">
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div style="padding:12px 16px; border-bottom:1px solid #e0e0e0; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
+        <span>🚛 实时运单追踪</span>
+        <span class="text-muted text-sm" id="order-update-time">更新中...</span>
+      </div>
+      <div id="order-map" style="height:500px;"></div>
+    </div>
+  </div>
+
+  <!-- 右侧：订单列表 + 统计 -->
+  <div style="width:480px; max-width:50%; display:flex; flex-direction:column; gap:12px;">
+    <!-- 统计 -->
+    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:8px;">
+      <div class="card" style="padding:12px; text-align:center;">
+        <div class="text-muted text-sm">总订单</div>
+        <div style="font-size:22px; font-weight:700;" id="s-total">-</div>
+      </div>
+      <div class="card" style="padding:12px; text-align:center;">
+        <div class="text-muted text-sm">运输中</div>
+        <div style="font-size:22px; font-weight:700; color:#3b82f6;" id="s-active">-</div>
+      </div>
+      <div class="card" style="padding:12px; text-align:center;">
+        <div class="text-muted text-sm">救灾单</div>
+        <div style="font-size:22px; font-weight:700; color:#ef4444;" id="s-emergency">-</div>
+      </div>
+      <div class="card" style="padding:12px; text-align:center;">
+        <div class="text-muted text-sm">已送达</div>
+        <div style="font-size:22px; font-weight:700; color:#10b981;" id="s-delivered">-</div>
+      </div>
+    </div>
+
+    <!-- 订单列表 -->
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div style="padding:12px 16px; border-bottom:1px solid #e0e0e0; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
+        <span>📦 订单列表</span>
+        <div style="display:flex; gap:6px;">
+          <button class="order-filter-btn active" data-filter="all" onclick="filterOrders('all')" style="padding:3px 10px; border:1px solid #ddd; border-radius:6px; background:#4f46e5; color:#fff; font-size:11px; cursor:pointer;">全部</button>
+          <button class="order-filter-btn" data-filter="normal" onclick="filterOrders('normal')" style="padding:3px 10px; border:1px solid #ddd; border-radius:6px; background:#fff; color:#666; font-size:11px; cursor:pointer;">普通</button>
+          <button class="order-filter-btn" data-filter="emergency" onclick="filterOrders('emergency')" style="padding:3px 10px; border:1px solid #ddd; border-radius:6px; background:#fff; color:#666; font-size:11px; cursor:pointer;">救灾</button>
+        </div>
+      </div>
+      <div id="order-list" style="max-height:420px; overflow-y:auto; padding:8px;">
+        <div class="text-center text-muted" style="padding:20px;">加载中...</div>
+      </div>
+    </div>
+
+    <!-- 企业资质 -->
+    <div class="card" style="padding:12px 16px;">
+      <div style="font-weight:700; margin-bottom:8px;">🏅 企业资质</div>
+      <div id="cert-list" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 救灾物资运送模式考核 ===== -->
+<div id="assessment-section" style="margin-top:20px;">
+  <div class="card" style="padding:20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h3 style="margin:0;">📊 救灾物资运送模式考核</h3>
+      <span class="text-muted text-sm" id="assess-date"></span>
+    </div>
+
+    <!-- 最新评分概览 -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:16px;" id="assess-summary">
+      <div class="text-center text-muted" style="padding:20px;">加载考核数据...</div>
+    </div>
+
+    <!-- 考核维度详情 -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;" id="assess-dimensions">
+    </div>
+
+    <!-- 历史考核记录 -->
+    <div style="margin-top:16px;">
+      <h4 style="margin-bottom:8px;">📈 历史考核记录</h4>
+      <div id="assess-history" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+
+    <!-- 考核建议 -->
+    <div id="assess-recommendation" style="margin-top:16px; padding:14px; background:#f0f7ff; border-radius:10px; border:1px solid #c7d2fe;">
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let orderMap = null;
+let orderMarkers = [];
+let orderLines = [];
+let orderTimer = null;
+let allOrders = [];
+let currentFilter = 'all';
+
+function initOrderMap() {
+  if (orderMap) return;
+  orderMap = L.map('order-map').setView([28, 105], 5);
+  L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+    subdomains: ['1','2','3','4'], attribution: '高德地图', maxZoom: 18
+  }).addTo(orderMap);
+}
+
+async function loadCompanyInfo() {
+  try {
+    const info = await API.get('/api/company/info');
+    document.getElementById('company-name').textContent = info.logo + ' ' + info.company_name;
+    document.getElementById('company-desc').textContent = info.description;
+    document.getElementById('c-founded').textContent = info.founded;
+    document.getElementById('c-fleet').textContent = info.fleet_size + '辆';
+    document.getElementById('c-drone').textContent = (info.drone_count || 0) + '架';
+    document.getElementById('c-wh').textContent = info.warehouse_count + '个';
+    document.getElementById('c-cities').textContent = info.service_cities + '个';
+    document.getElementById('c-emp').textContent = info.employees + '人';
+    document.getElementById('c-revenue').textContent = info.annual_revenue;
+
+    // 应急运力备选库信息
+    const er = info.emergency_role;
+    if (er) {
+      document.getElementById('er-title').textContent = er.title + '（' + er.contract_level + '）';
+      document.getElementById('er-detail').textContent = er.contract_signing + ' | 最近启动: ' + er.latest_activation;
+      document.getElementById('er-activation-count').textContent = er.activation_count;
+      document.getElementById('er-responsibilities').innerHTML = (er.responsibilities || []).map(r =>
+        `<span style="background:rgba(245,158,11,0.15); color:#92400e; padding:3px 8px; border-radius:6px; font-size:11px;">${r}</span>`
+      ).join('');
+      document.getElementById('emergency-role-banner').style.display = 'flex';
+    }
+
+    // 无人机编队
+    const droneEl = document.getElementById('drone-fleet');
+    if (info.drone_models && info.drone_models.length > 0) {
+      droneEl.innerHTML = info.drone_models.map(d => `
+        <div style="padding:12px; background:linear-gradient(135deg, #f5f3ff, #ede9fe); border:1px solid #c4b5fd; border-radius:10px;">
+          <div style="font-weight:700; color:#5b21b6; font-size:14px;">${d.model}</div>
+          <div style="font-size:12px; color:#7c3aed; margin:6px 0;">
+            <span style="background:#ddd6fe; padding:2px 6px; border-radius:4px;">${d.count}架</span>
+            <span style="background:#ddd6fe; padding:2px 6px; border-radius:4px; margin-left:4px;">载重${d.payload_kg}kg</span>
+            <span style="background:#ddd6fe; padding:2px 6px; border-radius:4px; margin-left:4px;">航程${d.range_km}km</span>
+          </div>
+          <div style="font-size:11px; color:#6d28d9;">${d.use}</div>
+        </div>
+      `).join('');
+    } else {
+      document.getElementById('drone-section').style.display = 'none';
+    }
+
+    const certEl = document.getElementById('cert-list');
+    certEl.innerHTML = (info.certifications || []).map(c =>
+      `<span style="background:#f0f7ff; color:#3b82f6; padding:4px 10px; border-radius:12px; font-size:12px;">${c}</span>`
+    ).join('');
+  } catch (e) { console.error('Company info:', e); }
+}
+
+function filterOrders(type) {
+  currentFilter = type;
+  document.querySelectorAll('.order-filter-btn').forEach(btn => {
+    if (btn.dataset.filter === type) {
+      btn.style.background = '#4f46e5';
+      btn.style.color = '#fff';
+    } else {
+      btn.style.background = '#fff';
+      btn.style.color = '#666';
+    }
+  });
+  renderOrders();
+}
+
+async function loadOrders() {
+  try {
+    const data = await API.get('/api/company/orders');
+    allOrders = data.orders || [];
+    const stats = data.stats || {};
+
+    document.getElementById('s-total').textContent = stats.total_orders || 0;
+    document.getElementById('s-active').textContent = stats.active_orders || 0;
+    document.getElementById('s-emergency').textContent = stats.emergency_orders || 0;
+    document.getElementById('s-delivered').textContent = stats.delivered_orders || 0;
+    document.getElementById('order-update-time').textContent = '更新于 ' + (data.updated_at || '');
+
+    renderOrders();
+    renderMap(allOrders);
+  } catch (e) {
+    console.error('Orders:', e);
+  }
+}
+
+function renderOrders() {
+  const orders = currentFilter === 'all' ? allOrders : allOrders.filter(o => o.order_type === currentFilter);
+  const listEl = document.getElementById('order-list');
+
+  listEl.innerHTML = orders.map(o => {
+    const isEmergency = o.order_type === 'emergency';
+    const statusColor = o.status === '已送达' ? '#10b981' : o.status === '运输中' ? '#3b82f6' : '#f59e0b';
+    const typeBadge = isEmergency
+      ? `<span style="background:#ef4444; color:#fff; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:700;">救灾</span>`
+      : `<span style="background:#6b7280; color:#fff; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:700;">普通</span>`;
+    const priorityBadge = o.priority ? `<span style="background:#b91c1c; color:#fff; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:700; margin-left:4px;">${o.priority}</span>` : '';
+    const droneIcon = o.is_drone ? ' 🚁' : '';
+    const scoreSection = isEmergency ? `
+      <div style="margin-top:6px; display:flex; gap:8px;">
+        <span style="font-size:11px; color:#059669;">安全分: <b>${o.safety_score || '-'}</b></span>
+        <span style="font-size:11px; color:#2563eb;">速度分: <b>${o.speed_score || '-'}</b></span>
+        ${o.dispatch_source ? `<span style="font-size:11px; color:#92400e;">来源: ${o.dispatch_source}</span>` : ''}
+      </div>
+    ` : '';
+
+    return `<div style="padding:10px; margin-bottom:6px; border-radius:8px; border:1px solid ${isEmergency ? '#fecaca' : '#eee'}; ${isEmergency ? 'background:#fff5f5;' : ''} cursor:pointer;"
+      onclick="focusOrder(${o.current_lat},${o.current_lng})" onmouseover="this.style.background='${isEmergency ? '#fee2e2' : '#f0f7ff'}'" onmouseout="this.style.background='${isEmergency ? '#fff5f5' : ''}'">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-weight:600; font-size:13px;">${typeBadge}${priorityBadge} ${o.order_no}</div>
+          <div class="text-muted text-sm" style="margin-top:2px;">${o.from} → ${o.to}${droneIcon}</div>
+          <div class="text-sm" style="color:#555; margin-top:2px;">${o.cargo} | ${o.vehicle}</div>
+          ${scoreSection}
+        </div>
+        <div style="text-align:right;">
+          <span style="background:${statusColor}; color:#fff; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600;">${o.status}</span>
+          <div class="text-sm" style="margin-top:4px; color:#666;">${o.progress}%</div>
+          ${o.eta_hours > 0 ? `<div class="text-muted" style="font-size:11px;">预计${o.eta_hours}h</div>` : ''}
+        </div>
+      </div>
+      <div style="margin-top:6px; height:4px; background:#e5e7eb; border-radius:2px; overflow:hidden;">
+        <div style="height:100%; width:${o.progress}%; background:${isEmergency ? '#ef4444' : statusColor}; transition:width 0.5s;"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  if (orders.length === 0) {
+    listEl.innerHTML = '<div class="text-center text-muted" style="padding:20px;">暂无订单</div>';
+  }
+}
+
+function renderMap(orders) {
+  initOrderMap();
+  setTimeout(() => orderMap.invalidateSize(), 100);
+
+  orderMarkers.forEach(m => orderMap.removeLayer(m));
+  orderLines.forEach(l => orderMap.removeLayer(l));
+  orderMarkers = [];
+  orderLines = [];
+
+  orders.forEach(o => {
+    const isEmergency = o.order_type === 'emergency';
+    const lineColor = isEmergency ? '#ef4444' : '#3b82f6';
+
+    const line = L.polyline([[o.from_lat, o.from_lng], [o.to_lat, o.to_lng]], {
+      color: lineColor, weight: isEmergency ? 3 : 2, opacity: 0.4, dashArray: '5,5'
+    }).addTo(orderMap);
+    orderLines.push(line);
+
+    const startIcon = L.divIcon({html: isEmergency ? '🔴' : '🟢', className: '', iconSize: [16,16]});
+    orderMarkers.push(L.marker([o.from_lat, o.from_lng], {icon: startIcon})
+      .bindPopup(`<b>起</b><br>${o.from}<br>${o.order_no}`).addTo(orderMap));
+
+    const endIcon = L.divIcon({html: o.status === '已送达' ? '🏁' : (isEmergency ? '🚨' : '📍'), className: '', iconSize: [20,20]});
+    orderMarkers.push(L.marker([o.to_lat, o.to_lng], {icon: endIcon})
+      .bindPopup(`<b>终</b><br>${o.to}<br>${o.order_no}`).addTo(orderMap));
+
+    if (o.status === '运输中') {
+      const movingIcon = o.is_drone ? '🚁' : (isEmergency ? '🚑' : '🚛');
+      const truckIcon = L.divIcon({html: movingIcon, className: '', iconSize: [28,28]});
+      orderMarkers.push(L.marker([o.current_lat, o.current_lng], {icon: truckIcon})
+        .bindPopup(`<b>${o.order_no}</b><br>${o.from} → ${o.to}<br>进度: ${o.progress}%<br>预计: ${o.eta_hours}h<br>货物: ${o.cargo}<br>车辆: ${o.vehicle}<br>${isEmergency ? '类型: 救灾物资<br>安全分: ' + (o.safety_score||'-') + '<br>速度分: ' + (o.speed_score||'-') : ''}`).addTo(orderMap));
+    }
+  });
+}
+
+function focusOrder(lat, lng) {
+  if (orderMap) orderMap.flyTo([lat, lng], 7, {duration: 1});
+}
+
+window.addEventListener('load', () => {
+  loadCompanyInfo();
+  loadOrders();
+  loadAssessment();
+  orderTimer = setInterval(loadOrders, 30000);
+});
+
+async function loadAssessment() {
+  try {
+    const data = await API.get('/api/emergency/assessment');
+    const latest = data.latest_score;
+
+    // 评分概览
+    const gradeColors = { A: '#10b981', B: '#3b82f6', C: '#f59e0b', D: '#ef4444' };
+    const gradeNames = { A: '卓越', B: '优秀', C: '良好', D: '待提升' };
+    document.getElementById('assess-summary').innerHTML = `
+      <div style="text-align:center; padding:16px; background:linear-gradient(135deg, #f0f7ff, #e0e7ff); border-radius:12px;">
+        <div class="text-muted text-sm">综合评分</div>
+        <div style="font-size:36px; font-weight:800; color:${gradeColors[latest.grade]};">${latest.total_score}</div>
+        <div style="font-size:14px; font-weight:700; color:${gradeColors[latest.grade]};">${latest.grade}级 - ${gradeNames[latest.grade]}</div>
+      </div>
+      <div style="text-align:center; padding:16px; background:#fef3f2; border-radius:12px;">
+        <div class="text-muted text-sm">🛡️ 安全维度</div>
+        <div style="font-size:30px; font-weight:800; color:#059669;">${latest.safety_score}</div>
+        <div style="font-size:11px; color:#6b7280;">权重50%</div>
+      </div>
+      <div style="text-align:center; padding:16px; background:#eff6ff; border-radius:12px;">
+        <div class="text-muted text-sm">⚡ 速度维度</div>
+        <div style="font-size:30px; font-weight:800; color:#2563eb;">${latest.speed_score}</div>
+        <div style="font-size:11px; color:#6b7280;">权重50%</div>
+      </div>
+      <div style="text-align:center; padding:16px; background:#f5f3ff; border-radius:12px;">
+        <div class="text-muted text-sm">考核单位</div>
+        <div style="font-size:13px; font-weight:600; color:#5b21b6; margin-top:4px; line-height:1.4;">${latest.assessor}</div>
+        <div class="text-muted" style="font-size:11px; margin-top:4px;">${latest.assessment_date}</div>
+      </div>
+    `;
+
+    // 考核维度详情
+    const dims = data.dimensions;
+    let dimHtml = '';
+    for (const [key, dim] of Object.entries(dims)) {
+      const color = key === 'safety' ? '#059669' : '#2563eb';
+      const bgColor = key === 'safety' ? '#f0fdf4' : '#eff6ff';
+      dimHtml += `
+        <div style="padding:14px; background:${bgColor}; border-radius:12px; border:1px solid ${color}33;">
+          <div style="font-weight:700; color:${color}; margin-bottom:10px; font-size:14px;">${dim.name}（权重${dim.weight * 100}%）</div>
+          ${dim.factors.map(f => `
+            <div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px dashed #e5e7eb;">
+              <div>
+                <div style="font-size:12px; font-weight:600; color:#374151;">${f.name}</div>
+                <div style="font-size:11px; color:#6b7280;">${f.desc}</div>
+              </div>
+              <div style="font-size:12px; color:#6b7280;">满分${f.max_score}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    document.getElementById('assess-dimensions').innerHTML = dimHtml;
+
+    // 历史记录
+    const history = data.history || [];
+    document.getElementById('assess-history').innerHTML = history.map(h => {
+      const hColor = h.total_score >= 90 ? '#10b981' : h.total_score >= 80 ? '#3b82f6' : '#f59e0b';
+      return `
+        <div style="display:flex; align-items:center; gap:12px; padding:10px 14px; background:#f8fafc; border-radius:8px; border:1px solid #e5e7eb;">
+          <div style="width:36px; height:36px; border-radius:8px; background:${hColor}; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px;">${h.grade}</div>
+          <div style="flex:1;">
+            <div style="font-size:13px; font-weight:600; color:#1e293b;">${h.scenario}</div>
+            <div class="text-muted" style="font-size:11px;">${h.date}</div>
+          </div>
+          <div style="display:flex; gap:12px; text-align:center;">
+            <div><div class="text-muted" style="font-size:10px;">安全</div><div style="font-size:14px; font-weight:700; color:#059669;">${h.safety_score}</div></div>
+            <div><div class="text-muted" style="font-size:10px;">速度</div><div style="font-size:14px; font-weight:700; color:#2563eb;">${h.speed_score}</div></div>
+            <div><div class="text-muted" style="font-size:10px;">总分</div><div style="font-size:14px; font-weight:800; color:${hColor};">${h.total_score}</div></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // 建议
+    document.getElementById('assess-recommendation').innerHTML = `
+      <div style="display:flex; align-items:start; gap:8px;">
+        <span style="font-size:18px;">💡</span>
+        <div>
+          <div style="font-weight:700; color:#1e40af; font-size:13px; margin-bottom:4px;">考核建议</div>
+          <div style="font-size:12px; color:#374151;">${data.recommendation}</div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('assess-date').textContent = '最新考核: ' + latest.assessment_date;
+  } catch (e) {
+    console.error('Assessment:', e);
+    document.getElementById('assess-summary').innerHTML = '<div class="text-center text-muted" style="padding:20px;">考核数据加载失败</div>';
+  }
+}
+</script>
+{% endblock %}
