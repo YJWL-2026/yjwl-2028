@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}研 · 案例生成 - 应急决策教学系统{% endblock %}
+
+{% block content %}
+<div style="margin-bottom:20px;">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:6px;">
+    <div style="width:44px; height:44px; border-radius:12px; background:linear-gradient(135deg, #a855f7, #7c3aed); display:flex; align-items:center; justify-content:center; font-size:22px; color:#fff; font-weight:800;">研</div>
+    <div>
+      <h2 style="font-size:22px; font-weight:700; margin:0;">{% if current_user and current_user.role == 'teacher' %}案例生成{% else %}案例浏览{% endif %}</h2>
+      <p style="font-size:13px; color:#64748b; margin:0;">
+    {% if current_user and current_user.role == 'teacher' %}
+    基于全省物流数据自动生成教学案例
+    {% else %}
+    浏览教学案例库，学习应急决策场景
+    {% endif %}
+  </p>
+    </div>
+  </div>
+</div>
+
+<!-- ====== 案例生成器（仅教师可见）====== -->
+{% if current_user and current_user.role == 'teacher' %}
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-header">
+    <h3>🔬 智能案例生成</h3>
+    <span style="font-size:12px; color:#94a3b8;">基于物流数据 + 灾害参数自动构建</span>
+  </div>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px; margin-bottom:20px;">
+    <div class="form-group" style="margin:0;">
+      <label class="form-label">灾害类型</label>
+      <select id="gen-disaster-type" class="form-control" style="padding:10px 14px; border:1px solid #d1d5db; border-radius:8px; width:100%;">
+        <option value="earthquake">🌋 地震</option>
+        <option value="rainstorm">🌧️ 暴雨</option>
+        <option value="typhoon">🌀 台风</option>
+        <option value="flood">🌊 洪水</option>
+        <option value="landslide">⛰️ 山体滑坡</option>
+        <option value="mudslide">🪨 泥石流</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label class="form-label">发生地点</label>
+      <input type="text" id="gen-location" class="form-control" placeholder="如：成都市" value="成都市" style="padding:10px 14px; border:1px solid #d1d5db; border-radius:8px; width:100%;">
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label class="form-label">难度等级</label>
+      <select id="gen-difficulty" class="form-control" style="padding:10px 14px; border:1px solid #d1d5db; border-radius:8px; width:100%;">
+        <option value="easy">🟢 初级</option>
+        <option value="medium" selected>🟡 中级</option>
+        <option value="hard">🔴 高级</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0; display:flex; align-items:flex-end;">
+      <button class="btn btn-primary" style="width:100%; padding:10px 20px; background:linear-gradient(135deg, #7c3aed, #a855f7); border:none; border-radius:8px; font-size:14px; font-weight:600; color:#fff; cursor:pointer;" onclick="generateCase()" id="gen-btn">
+        🔬 生成案例
+      </button>
+    </div>
+  </div>
+
+  <!-- 生成结果展示 -->
+  <div id="gen-result" style="display:none; padding:24px; border-radius:12px; background:linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border:1px solid #d8b4fe;">
+    <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:16px;">
+      <div>
+        <div style="font-size:18px; font-weight:700; color:#7c3aed;" id="result-name"></div>
+        <div style="font-size:12px; color:#94a3b8; margin-top:4px;" id="result-id"></div>
+      </div>
+      <span style="font-size:11px; padding:4px 10px; border-radius:20px; background:#ede9fe; color:#7c3aed; font-weight:600;" id="result-difficulty"></span>
+    </div>
+    <div style="font-size:13px; color:#475569; line-height:1.8; margin-bottom:16px;" id="result-desc"></div>
+    <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:16px;">
+      <div style="text-align:center; padding:12px; background:#fff; border-radius:8px; border:1px solid #e9d5ff;">
+        <div style="font-size:20px; font-weight:700; color:#7c3aed;" id="result-budget"></div>
+        <div style="font-size:11px; color:#64748b;">预算（元）</div>
+      </div>
+      <div style="text-align:center; padding:12px; background:#fff; border-radius:8px; border:1px solid #e9d5ff;">
+        <div style="font-size:20px; font-weight:700; color:#7c3aed;" id="result-time"></div>
+        <div style="font-size:11px; color:#64748b;">时限（秒）</div>
+      </div>
+      <div style="text-align:center; padding:12px; background:#fff; border-radius:8px; border:1px solid #e9d5ff;">
+        <div style="font-size:20px; font-weight:700; color:#7c3aed;" id="result-cargo"></div>
+        <div style="font-size:11px; color:#64748b;">货物批次</div>
+      </div>
+      <div style="text-align:center; padding:12px; background:#fff; border-radius:8px; border:1px solid #e9d5ff;">
+        <div style="font-size:20px; font-weight:700; color:#7c3aed;" id="result-warehouse"></div>
+        <div style="font-size:11px; color:#64748b;">仓库数量</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-outline btn-sm" onclick="generateCase()">🔄 重新生成</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ====== 已生成案例列表 ====== -->
+<div class="card">
+  <div class="card-header">
+    <h3>📂 已生成案例库</h3>
+    <span style="font-size:12px; color:#94a3b8;" id="case-count">0 个案例</span>
+  </div>
+  <div id="case-list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:16px;">
+    <div style="text-align:center; padding:40px; color:#94a3b8; grid-column:1/-1;">
+      <div style="font-size:28px; margin-bottom:8px;">📂</div>
+      <div style="font-size:13px;">正在加载案例列表...</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let _lastCase = null;
+let _allCases = [];
+
+// ====== 生成案例 ======
+async function generateCase() {
+  const disasterType = document.getElementById('gen-disaster-type').value;
+  const location = document.getElementById('gen-location').value.trim();
+  const difficulty = document.getElementById('gen-difficulty').value;
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner" style="display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.6s linear infinite; vertical-align:middle; margin-right:6px;"></span> 生成中...';
+
+  try {
+    const result = await API.post('/api/research/generate', {
+      disaster_type: disasterType,
+      location: location,
+      difficulty: difficulty,
+    });
+    const caseData = result.case;
+    _lastCase = caseData;
+
+    // 展示结果
+    document.getElementById('gen-result').style.display = '';
+    document.getElementById('result-name').textContent = caseData.case_name;
+    document.getElementById('result-id').textContent = caseData.case_id + ' · 生成于 ' + caseData.generated_at;
+    document.getElementById('result-difficulty').textContent = caseData.difficulty === 'easy' ? '🟢 初级' : caseData.difficulty === 'medium' ? '🟡 中级' : '🔴 高级';
+    document.getElementById('result-desc').textContent = caseData.description;
+    document.getElementById('result-budget').textContent = formatNum(caseData.budget);
+    document.getElementById('result-time').textContent = caseData.time_limit;
+    document.getElementById('result-cargo').textContent = caseData.cargo_count;
+    document.getElementById('result-warehouse').textContent = caseData.warehouse_count;
+
+    showToast('案例生成成功');
+    loadCases();
+  } catch (e) {
+    handleError(e, '生成案例');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🔬 生成案例';
+  }
+}
+
+// ====== 查看案例详情 ======
+function viewCaseDetail(caseId) {
+  const c = _allCases.find(x => x.case_id === caseId);
+  if (!c) { showToast('案例数据未找到', true); return; }
+  const typeIcons = {earthquake:'🌋', rainstorm:'🌧️', typhoon:'🌀', flood:'🌊', landslide:'⛰️', mudslide:'🪨', geological:'⛰️'};
+  const diffLabels = {easy:'初级', medium:'中级', hard:'高级'};
+  const body = `<div style="max-height:65vh; overflow-y:auto; padding:4px;">
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+      <span style="font-size:36px;">${typeIcons[c.disaster_type] || '⚠️'}</span>
+      <div>
+        <h3 style="margin:0; font-size:18px;">${c.case_name || '未命名案例'}</h3>
+        <span style="font-size:11px; color:#94a3b8;">${c.case_id} · ${diffLabels[c.difficulty] || '中等'}</span>
+      </div>
+    </div>
+    <div style="background:#f8fafc; border-radius:8px; padding:14px; margin-bottom:12px;">
+      <div style="font-weight:600; font-size:12px; color:#64748b; margin-bottom:6px;">📋 案例描述</div>
+      <div style="font-size:13px; color:#334155; line-height:1.7; white-space:pre-wrap;">${c.description || '暂无详情'}</div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">
+      <div style="background:#f0fdf4; border-radius:8px; padding:10px;">
+        <div style="font-size:10px; color:#16a34a; font-weight:600;">💰 预算</div>
+        <div style="font-size:16px; font-weight:700;">¥${formatNum(c.budget || 0)}</div>
+      </div>
+      <div style="background:#eff6ff; border-radius:8px; padding:10px;">
+        <div style="font-size:10px; color:#2563eb; font-weight:600;">⏱ 决策时限</div>
+        <div style="font-size:16px; font-weight:700;">${c.time_limit || 0}秒</div>
+      </div>
+      <div style="background:#fffbeb; border-radius:8px; padding:10px;">
+        <div style="font-size:10px; color:#d97706; font-weight:600;">📦 物资批次</div>
+        <div style="font-size:16px; font-weight:700;">${c.cargo_count || 0}批</div>
+      </div>
+      <div style="background:#fef2f2; border-radius:8px; padding:10px;">
+        <div style="font-size:10px; color:#dc2626; font-weight:600;">🏗 仓库数量</div>
+        <div style="font-size:16px; font-weight:700;">${c.warehouse_count || 0}个</div>
+      </div>
+    </div>
+    <div style="font-size:11px; color:#94a3b8; margin-bottom:12px;">生成时间: ${c.generated_at || '--'} · 数据源: ${c.data_source || '--'}</div>
+    ${c.decisions ? '<div style="background:#faf5ff; border-radius:8px; padding:14px; margin-bottom:8px;"><div style="font-weight:600; font-size:12px; color:#7c3aed; margin-bottom:6px;">⚡ 决策记录</div><div style="font-size:12px; color:#4c1d95; line-height:1.6; white-space:pre-wrap;">' + c.decisions + '</div></div>' : ''}
+    ${c.affected_orders ? '<div style="background:#fff7ed; border-radius:8px; padding:14px; margin-bottom:8px;"><div style="font-weight:600; font-size:12px; color:#ea580c; margin-bottom:6px;">📦 受影响订单</div><div style="font-size:12px; color:#7c2d12; line-height:1.6; white-space:pre-wrap;">' + c.affected_orders + '</div></div>' : ''}
+  </div>
+  <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">关闭</button></div>`;
+  showModal(body);
+}
+
+// ====== 加载案例列表 ======
+async function loadCases() {
+  try {
+    const data = await API.get('/api/research/cases');
+    const cases = data.cases || [];
+    _allCases = cases;  // 存储以便点击查看详情
+    document.getElementById('case-count').textContent = cases.length + ' 个案例';
+    const el = document.getElementById('case-list');
+    if (cases.length === 0) {
+      el.innerHTML = '<div style="text-align:center; padding:40px; color:#94a3b8; grid-column:1/-1;"><div style="font-size:28px; margin-bottom:8px;">📂</div><div style="font-size:13px;">暂无案例，请使用上方工具生成</div></div>';
+      return;
+    }
+    const typeIcons = {earthquake:'🌋', rainstorm:'🌧️', typhoon:'🌀', flood:'🌊', landslide:'⛰️', mudslide:'🪨'};
+    const diffColors = {easy:'#10b981', medium:'#f59e0b', hard:'#ef4444'};
+    const diffLabels = {easy:'初级', medium:'中级', hard:'高级'};
+    el.innerHTML = cases.slice().reverse().map((c, idx) => `
+      <div style="padding:20px; border-radius:12px; background:#fff; border:1px solid #e5e7eb; transition:all 0.2s; cursor:pointer;" onmouseover="this.style.borderColor='#a855f7'; this.style.boxShadow='0 4px 12px rgba(168,85,247,0.1)'" onmouseout="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'" onclick="viewCaseDetail('${c.case_id}')">
+        <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:12px;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:28px;">${typeIcons[c.disaster_type] || '⚠️'}</span>
+            <div>
+              <div style="font-size:14px; font-weight:700; color:#1e293b;">${c.case_name}</div>
+              <div style="font-size:11px; color:#94a3b8;">${c.case_id}</div>
+            </div>
+          </div>
+          <span style="font-size:10px; padding:3px 8px; border-radius:4px; background:${diffColors[c.difficulty]}20; color:${diffColors[c.difficulty]}; font-weight:600;">${diffLabels[c.difficulty]}</span>
+        </div>
+        <div style="font-size:12px; color:#64748b; line-height:1.6; margin-bottom:12px;">${c.description?.substring(0, 80) || ''}...</div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <span style="font-size:11px; padding:3px 8px; background:#f8fafc; border-radius:4px; color:#64748b;">💰 ${formatNum(c.budget)}元</span>
+          <span style="font-size:11px; padding:3px 8px; background:#f8fafc; border-radius:4px; color:#64748b;">⏱ ${c.time_limit}秒</span>
+          <span style="font-size:11px; padding:3px 8px; background:#f8fafc; border-radius:4px; color:#64748b;">📦 ${c.cargo_count}批</span>
+          <span style="font-size:11px; padding:3px 8px; background:#f8fafc; border-radius:4px; color:#64748b;">🏗 ${c.warehouse_count}仓</span>
+        </div>
+        <div style="font-size:11px; color:#94a3b8; margin-top:10px;">生成于 ${c.generated_at} · 数据源：${c.data_source}</div>
+      </div>
+    `).join('');
+  } catch (e) {
+    handleError(e, '加载案例列表');
+  }
+}
+
+loadCases();
+</script>
+{% endblock %}
