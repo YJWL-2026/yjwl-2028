@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block top_title %}数据大屏{% endblock %}
+{% block content %}
+<style>
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 14px;
+    height: calc(100vh - 160px);
+    min-height: 600px;
+  }
+  @media (max-width: 768px) {
+    .dashboard-grid { grid-template-columns: 1fr; grid-template-rows: auto; height: auto; }
+  }
+  .dash-panel {
+    background: #0f172a;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .dash-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: rgba(255,255,255,0.03);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+  }
+  .dash-panel-header h3 { margin: 0; font-size: 14px; color: #e2e8f0; display: flex; align-items: center; gap: 8px; }
+  .dash-panel-body { flex: 1; overflow-y: auto; padding: 12px 16px; }
+  .dash-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+  .dash-badge-green { background: #064e3b; color: #6ee7b7; }
+  .dash-badge-blue { background: #172554; color: #93c5fd; }
+  .dash-badge-orange { background: #451a03; color: #fdba74; }
+  .dash-badge-red { background: #450a0a; color: #fca5a5; }
+  .dash-stat-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .dash-stat {
+    flex: 1;
+    background: rgba(255,255,255,0.04);
+    border-radius: 10px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .dash-stat-val { font-size: 22px; font-weight: 700; color: #f8fafc; }
+  .dash-stat-label { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+  .dash-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 12px;
+    color: #cbd5e1;
+  }
+  .dash-list-item:last-child { border-bottom: none; }
+  .dash-tag { font-size: 10px; padding: 2px 7px; border-radius: 6px; }
+  .dash-news-item {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer;
+  }
+  .dash-news-item:hover { color: #e2e8f0; }
+  .dash-news-title { font-size: 12px; font-weight: 600; color: #cbd5e1; margin-bottom: 3px; }
+  .dash-news-meta { font-size: 10px; color: #64748b; }
+  .loading-text { color: #64748b; text-align: center; padding: 20px; font-size: 13px; }
+  .error-text { color: #f87171; text-align: center; padding: 20px; font-size: 13px; }
+</style>
+
+<div style="display:flex; justify-content:flex-end; margin-bottom:8px;">
+  <button onclick="clearAllData()" style="padding:6px 16px; background:#450a0a; color:#fca5a5; border:1px solid #7f1d1d; border-radius:8px; font-size:13px; cursor:pointer; transition:all 0.2s;"
+          onmouseover="this.style.background='#991b1b';this.style.color='#fecaca'"
+          onmouseout="this.style.background='#450a0a';this.style.color='#fca5a5'">
+    ⚠ 清空所有账号所有历史操作
+  </button>
+</div>
+<div class="dashboard-grid">
+  <!-- 1. 灾害查询大屏 -->
+  <div class="dash-panel">
+    <div class="dash-panel-header">
+      <h3>🌐 灾害预警监测</h3>
+      <span class="dash-badge dash-badge-red" id="alert-badge">实时</span>
+    </div>
+    <div class="dash-panel-body" id="disaster-panel">
+      <div class="loading-text">加载中...</div>
+    </div>
+  </div>
+
+  <!-- 2. 全省物流信息 -->
+  <div class="dash-panel">
+    <div class="dash-panel-header">
+      <h3>🚚 全省物流信息</h3>
+      <span class="dash-badge dash-badge-blue" id="log-badge">实时</span>
+    </div>
+    <div class="dash-panel-body" id="logistics-panel">
+      <div class="loading-text">加载中...</div>
+    </div>
+  </div>
+
+  <!-- 3. 企业运力大屏 -->
+  <div class="dash-panel">
+    <div class="dash-panel-header">
+      <h3>🏗 企业运力大屏</h3>
+      <span class="dash-badge dash-badge-green" id="company-badge">运营中</span>
+    </div>
+    <div class="dash-panel-body" id="company-panel">
+      <div class="loading-text">加载中...</div>
+    </div>
+  </div>
+
+  <!-- 4. 应急灾害管理新闻 -->
+  <div class="dash-panel">
+    <div class="dash-panel-header">
+      <h3>📰 应急灾害管理新闻</h3>
+      <span class="dash-badge dash-badge-orange">动态</span>
+    </div>
+    <div class="dash-panel-body" id="news-panel">
+      <div class="loading-text">加载中...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+async function initDashboard() {
+  loadDisasterPanel();
+  loadLogisticsPanel();
+  loadCompanyPanel();
+  loadNewsPanel();
+}
+
+// ===== 1. 灾害预警（与内页一致） =====
+async function loadDisasterPanel() {
+  const el = document.getElementById('disaster-panel');
+  try {
+    const data = await API.get('/api/realtime/alerts');
+    const alerts = (data.alerts || []).slice(0, 10);
+    if (!alerts.length) {
+      el.innerHTML = '<div class="loading-text">暂无预警数据</div>';
+      return;
+    }
+    const levelColors = { '红色':'#ef4444', '橙色':'#f97316', '黄色':'#eab308', '蓝色':'#3b82f6' };
+    const sumLevel = (lv) => alerts.filter(a => (a.level||'').includes(lv)).length;
+    el.innerHTML = `
+      <div class="dash-stat-row">
+        <div class="dash-stat"><div class="dash-stat-val" style="color:#ef4444;">${sumLevel('红色')}</div><div class="dash-stat-label">红色预警</div></div>
+        <div class="dash-stat"><div class="dash-stat-val" style="color:#f97316;">${sumLevel('橙色')}</div><div class="dash-stat-label">橙色预警</div></div>
+        <div class="dash-stat"><div class="dash-stat-val" style="color:#eab308;">${sumLevel('黄色')}</div><div class="dash-stat-label">黄色预警</div></div>
+        <div class="dash-stat"><div class="dash-stat-val" style="color:#3b82f6;">${sumLevel('蓝色')}</div><div class="dash-stat-label">蓝色预警</div></div>
+      </div>
+      ${alerts.map(a => {
+        const c = levelColors[a.level] || '#94a3b8';
+        return `<div class="dash-list-item">
+          <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${a.title}">${a.title || '--'}</span>
+          <span class="dash-tag" style="background:${c}22; color:${c};">${a.level || '--'}</span>
+        </div>`;
+      }).join('')}
+      <div class="dash-news-meta" style="text-align:center; padding-top:8px;">数据来源: ${data.source || '应急管理部'} · 共${alerts.length}条</div>`;
+    document.getElementById('alert-badge').textContent = '更新';
+  } catch (e) { el.innerHTML = '<div class="error-text">加载失败</div>'; }
+}
+
+// ===== 2. 全省物流信息（与内页 logistics.html 一致） =====
+async function loadLogisticsPanel() {
+  const el = document.getElementById('logistics-panel');
+  try {
+    const data = await API.get('/api/logistics/query');
+    const roads = data.roads || [];
+    const warehouses = data.warehouses || [];
+    const cities = data.cities || [];
+    el.innerHTML = `
+      <div class="dash-stat-row">
+        <div class="dash-stat"><div class="dash-stat-val" style="color:#93c5fd;">${roads.length}</div><div class="dash-stat-label">物流线路</div></div>
+        <div class="dash-stat"><div class="dash-stat-val" style="color:#6ee7b7;">${warehouses.length}</div><div class="dash-stat-label">仓库节点</div></div>
+        <div class="dash-stat"><div class="dash-stat-val" style="color:#fde68a;">${cities.length}</div><div class="dash-stat-label">覆盖城市</div></div>
+      </div>
+      <div style="font-size:12px; color:#94a3b8; margin-bottom:6px;">主要物流线路</div>
+      ${roads.slice(0, 8).map(r => `
+        <div class="dash-list-item">
+          <span>${r.from || r.source || '--'} → ${r.to || r.target || '--'}</span>
+          <span class="dash-tag" style="background:rgba(59,130,246,0.15); color:#93c5fd;">${r.distance_km || r.distance || '--'}km</span>
+        </div>`).join('')}
+      ${cities.length > 0 ? `
+        <div style="font-size:12px; color:#94a3b8; margin-bottom:6px; margin-top:10px;">覆盖城市</div>
+        <div style="display:flex; flex-wrap:wrap; gap:4px;">${cities.slice(0, 12).map(c => `<span style="font-size:11px; padding:2px 8px; background:rgba(255,255,255,0.05); border-radius:6px; color:#cbd5e1;">${c.name || c}</span>`).join('')}</div>` : ''}`;
+    document.getElementById('log-badge').textContent = `更新`;
+  } catch (e) { el.innerHTML = '<div class="error-text">加载失败</div>'; }
+}
+
+// ===== 3. 企业运力（与内页 company_dashboard.html 一致） =====
+async function loadCompanyPanel() {
+  const el = document.getElementById('company-panel');
+  try {
+    const info = await API.get('/api/company/info');
+    const orderData = await API.get('/api/company/orders');
+    const stats = orderData.stats || {};
+    const orders = (orderData.orders || []).slice(0, 8);
+    el.innerHTML = `
+      <div class="dash-stat-row">
+        <div class="dash-stat"><div class="dash-stat-val" style="color:#6ee7b7;">${info.fleet_size || '--'}</div><div class="dash-stat-label">车辆总数(辆)</div></div>
+        <div class="dash-stat"><div class="dash-stat-val" style="color:#93c5fd;">${info.drone_count || '0'}</div><div class="dash-stat-label">无人机(架)</div></div>
+        <div class="dash-stat"><div class="dash-stat-val" style="color:#fde68a;">${stats.total_orders || 0}</div><div class="dash-stat-label">总订单</div></div>
+        <div class="dash-stat"><div class="dash-stat-val" style="color:#c084fc;">${stats.active_orders || 0}</div><div class="dash-stat-label">进行中</div></div>
+      </div>
+      <div style="font-size:12px; color:#94a3b8; margin-bottom:6px;">企业信息: ${info.company_name || '--'} · 成立: ${info.founded || '--'}</div>
+      ${orders.length > 0 ? `<div style="font-size:12px; color:#94a3b8; margin-bottom:6px;">最新订单</div>` : ''}
+      ${orders.map(o => `
+        <div class="dash-list-item">
+          <span>📦 ${o.order_id || o.cargo_id || '--'}</span>
+          <span style="color:#94a3b8; font-size:11px;">${o.status || '--'}</span>
+          <span>${o.destination || '--'}</span>
+        </div>`).join('')}`;
+    document.getElementById('company-badge').textContent = info.company_name ? '运营中' : '离线';
+  } catch (e) { el.innerHTML = '<div class="error-text">加载失败</div>'; }
+}
+
+// ===== 4. 应急灾害新闻 =====
+async function loadNewsPanel() {
+  const el = document.getElementById('news-panel');
+  const newsData = [
+    { title: '应急管理部部署2026年防汛抗旱工作', time: '2026-08-05', source: '应急管理部' },
+    { title: '国家综合性消防救援队伍防汛应急救援全面展开', time: '2026-08-04', source: '新华社' },
+    { title: '全国应急物资保障体系进一步完善，新增52个储备库', time: '2026-08-03', source: '人民日报' },
+    { title: '"十五五"应急管理规划编制工作全面启动', time: '2026-08-02', source: '中国应急管理报' },
+    { title: '台风"格美"登陆在即，浙闽沿海紧急转移群众', time: '2026-08-02', source: '中央气象台' },
+    { title: '四川甘孜州发生5.8级地震，救援力量已抵达', time: '2026-08-01', source: '央视新闻' },
+    { title: '2026年自然灾害防治技术装备展会在京开幕', time: '2026-07-30', source: '科技日报' },
+    { title: '全国应急管理系统开展"安全生产月"专项督查', time: '2026-07-28', source: '应急管理部' },
+  ];
+  el.innerHTML = newsData.map(n => `
+    <div class="dash-news-item" onclick="window.open('https://www.mem.gov.cn/')">
+      <div class="dash-news-title">${n.title}</div>
+      <div class="dash-news-meta">${n.time} · ${n.source}</div>
+    </div>`).join('');
+  // 每分钟刷新一次灾害数据
+  setTimeout(() => { loadDisasterPanel(); loadLogisticsPanel(); }, 60000);
+}
+
+async function clearAllData() {
+  if (!confirm('⚠ 确定要清空所有账号的所有历史操作吗？\n\n此操作将删除：\n• 所有学生的成绩和素养画像\n• 所有组任务和数据\n• 所有决策记录和进度\n\n此操作不可恢复！')) return;
+  if (!confirm('再次确认：真的要清空所有数据吗？')) return;
+  try {
+    const r = await API.post('/api/system/clear', {});
+    if (r.error) { alert('清空失败: ' + r.error); return; }
+    alert('✅ 所有数据已清空');
+    location.reload();
+  } catch (e) {
+    alert('清空失败: ' + e.message);
+  }
+}
+
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+initDashboard();
+</script>
+{% endblock %}
