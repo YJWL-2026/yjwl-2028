@@ -1,0 +1,469 @@
+{
+  "scenario_id": "RT-EQ-000",
+  "scenario_name": "真实地震场景 - 云南普洱市墨江县 M5.0",
+  "scenario_description": "基于中国地震台网实时数据生成。发震时间: 2026-07-21 19:43:06，震源: 云南普洱市墨江县，震级: M5.0，震源深度: 6.0km，烈度: 7度。中强震，局部影响明显。数据来源: 正式。",
+  "disaster": {
+    "disaster_id": "DIS-EQ-000",
+    "disaster_type": "earthquake",
+    "center_lat": 23.19,
+    "center_lng": 101.46,
+    "influence_radius_km": 80,
+    "affected_areas": [
+      "云南普洱市墨江县"
+    ],
+    "occurrence_time": "2026-07-21 19:43:06",
+    "earthquake": {
+      "magnitude": 5.0,
+      "epicenter_city": "云南普洱市墨江县",
+      "epicenter_lat": 23.19,
+      "epicenter_lng": 101.46,
+      "depth_km": 6.0,
+      "influence_radius_km": 80,
+      "occur_time": "2026-07-21 19:43:06",
+      "affected_areas": [
+        "云南普洱市墨江县"
+      ],
+      "severity_level": "moderate",
+      "wave_arrival_times": []
+    }
+  },
+  "logistics_network": {
+    "nodes": [
+      {
+        "node_id": "NODE-EQ00",
+        "node_name": "震中(云南普洱市墨江县)",
+        "node_type": "warehouse",
+        "city": "云南普洱市墨江县",
+        "lat": 23.19,
+        "lng": 101.46
+      },
+      {
+        "node_id": "NODE-EQ01",
+        "node_name": "北向60km",
+        "node_type": "city",
+        "city": "震中北向60km",
+        "lat": 23.7305,
+        "lng": 101.46
+      },
+      {
+        "node_id": "NODE-EQ02",
+        "node_name": "东向80km",
+        "node_type": "city",
+        "city": "震中东向80km",
+        "lat": 23.19,
+        "lng": 102.4012
+      },
+      {
+        "node_id": "NODE-EQ03",
+        "node_name": "南向50km",
+        "node_type": "city",
+        "city": "震中南向50km",
+        "lat": 22.7395,
+        "lng": 101.46
+      }
+    ],
+    "roads": [
+      {
+        "road_id": "R-01",
+        "road_name": "震中-北",
+        "from_node": "NODE-EQ00",
+        "to_node": "NODE-EQ01",
+        "road_type": "highway",
+        "is_bidirectional": true,
+        "distance_km": 60,
+        "speed_limit_kmh": 80,
+        "current_travel_time_min": 45,
+        "road_condition": "clear",
+        "has_bridge": true,
+        "has_tunnel": false,
+        "capacity_per_hour": 2000,
+        "toll_cost": 30.0,
+        "fuel_cost_per_km": 0.8
+      },
+      {
+        "road_id": "R-02",
+        "road_name": "震中-东",
+        "from_node": "NODE-EQ00",
+        "to_node": "NODE-EQ02",
+        "road_type": "highway",
+        "is_bidirectional": true,
+        "distance_km": 80,
+        "speed_limit_kmh": 80,
+        "current_travel_time_min": 60,
+        "road_condition": "clear",
+        "has_bridge": false,
+        "has_tunnel": true,
+        "capacity_per_hour": 2000,
+        "toll_cost": 40.0,
+        "fuel_cost_per_km": 0.8
+      },
+      {
+        "road_id": "R-03",
+        "road_name": "震中-南",
+        "from_node": "NODE-EQ00",
+        "to_node": "NODE-EQ03",
+        "road_type": "highway",
+        "is_bidirectional": true,
+        "distance_km": 50,
+        "speed_limit_kmh": 80,
+        "current_travel_time_min": 38,
+        "road_condition": "clear",
+        "has_bridge": false,
+        "has_tunnel": false,
+        "capacity_per_hour": 2000,
+        "toll_cost": 25.0,
+        "fuel_cost_per_km": 0.8
+      },
+      {
+        "road_id": "R-04",
+        "road_name": "北-东",
+        "from_node": "NODE-EQ01",
+        "to_node": "NODE-EQ02",
+        "road_type": "highway",
+        "is_bidirectional": true,
+        "distance_km": 100,
+        "speed_limit_kmh": 80,
+        "current_travel_time_min": 75,
+        "road_condition": "clear",
+        "has_bridge": false,
+        "has_tunnel": false,
+        "capacity_per_hour": 2000,
+        "toll_cost": 50.0,
+        "fuel_cost_per_km": 0.8
+      },
+      {
+        "road_id": "R-05",
+        "road_name": "东-南",
+        "from_node": "NODE-EQ02",
+        "to_node": "NODE-EQ03",
+        "road_type": "highway",
+        "is_bidirectional": true,
+        "distance_km": 95,
+        "speed_limit_kmh": 80,
+        "current_travel_time_min": 71,
+        "road_condition": "clear",
+        "has_bridge": false,
+        "has_tunnel": false,
+        "capacity_per_hour": 2000,
+        "toll_cost": 47.5,
+        "fuel_cost_per_km": 0.8
+      }
+    ]
+  },
+  "vehicle_fleet": [
+    {
+      "vehicle_id": "V-EQ01",
+      "license_plate": "云A10000",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 10,
+      "capacity_m3": 40,
+      "current_location_node": "NODE-EQ00",
+      "current_lat": 23.19,
+      "current_lng": 101.46,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "司机1",
+      "home_depot": "NODE-EQ00",
+      "cost_per_km": 8,
+      "cost_per_hour": 60,
+      "is_refrigerated": false
+    },
+    {
+      "vehicle_id": "V-EQ02",
+      "license_plate": "云A10001",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 10,
+      "capacity_m3": 40,
+      "current_location_node": "NODE-EQ01",
+      "current_lat": 23.7305,
+      "current_lng": 101.46,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "司机2",
+      "home_depot": "NODE-EQ01",
+      "cost_per_km": 8,
+      "cost_per_hour": 60,
+      "is_refrigerated": false
+    },
+    {
+      "vehicle_id": "V-EQ03",
+      "license_plate": "云A10002",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 10,
+      "capacity_m3": 40,
+      "current_location_node": "NODE-EQ02",
+      "current_lat": 23.19,
+      "current_lng": 102.4012,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "司机3",
+      "home_depot": "NODE-EQ02",
+      "cost_per_km": 8,
+      "cost_per_hour": 60,
+      "is_refrigerated": false
+    },
+    {
+      "vehicle_id": "V-EQ04",
+      "license_plate": "云A10003",
+      "vehicle_type": "box_truck",
+      "capacity_tons": 10,
+      "capacity_m3": 40,
+      "current_location_node": "NODE-EQ03",
+      "current_lat": 22.7395,
+      "current_lng": 101.46,
+      "status": "idle",
+      "current_cargo_ids": [],
+      "current_load_tons": 0,
+      "current_load_m3": 0,
+      "driver_name": "司机4",
+      "home_depot": "NODE-EQ03",
+      "cost_per_km": 8,
+      "cost_per_hour": 60,
+      "is_refrigerated": false
+    }
+  ],
+  "warehouses": [
+    {
+      "warehouse_id": "WH-EQ01",
+      "warehouse_name": "云南普洱市墨江县中转仓",
+      "city": "云南普洱市墨江县",
+      "address": "云南普洱市墨江县物流园",
+      "lat": 23.19,
+      "lng": 101.46,
+      "node_id": "NODE-EQ00",
+      "total_capacity_m3": 5000,
+      "used_capacity_m3": 2000,
+      "storage_cost_per_m3_per_day": 2.5,
+      "supported_cargo_types": [
+        "normal"
+      ],
+      "has_cold_chain": false,
+      "has_dock": 4,
+      "dock_occupancy": 1,
+      "is_24h": true,
+      "damage_status": "damaged"
+    },
+    {
+      "warehouse_id": "WH-EQ02",
+      "warehouse_name": "北向备选仓",
+      "city": "北向60km",
+      "address": "北向物流中心",
+      "lat": 23.7305,
+      "lng": 101.46,
+      "node_id": "NODE-EQ01",
+      "total_capacity_m3": 3000,
+      "used_capacity_m3": 500,
+      "storage_cost_per_m3_per_day": 2.0,
+      "supported_cargo_types": [
+        "normal"
+      ],
+      "has_cold_chain": false,
+      "has_dock": 3,
+      "dock_occupancy": 0,
+      "is_24h": true,
+      "damage_status": "normal"
+    }
+  ],
+  "cargo_manifest": [
+    {
+      "cargo_id": "C-EQ01",
+      "order_no": "PO-EQ01",
+      "cargo_type": "medical",
+      "description": "急救药品一批",
+      "weight_tons": 3,
+      "volume_m3": 15,
+      "value_yuan": 50000,
+      "priority_level": "P1",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-EQ00",
+      "origin_name": "云南普洱市墨江县医院",
+      "destination_node": "NODE-EQ01",
+      "destination_name": "NODE-EQ01目的地",
+      "destination_lat": 23.7305,
+      "destination_lng": 101.46,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-EQ00",
+      "planned_route": [
+        "NODE-EQ00",
+        "NODE-EQ01"
+      ],
+      "current_route_index": 0,
+      "departure_time": "",
+      "deadline": "",
+      "contract_penalty_per_hour": 500,
+      "customer_id": "CUST-C-EQ01",
+      "customer_name": "云南普洱市墨江县医院客户",
+      "customer_type": "enterprise"
+    },
+    {
+      "cargo_id": "C-EQ02",
+      "order_no": "PO-EQ02",
+      "cargo_type": "supplies",
+      "description": "帐篷被褥",
+      "weight_tons": 8,
+      "volume_m3": 30,
+      "value_yuan": 30000,
+      "priority_level": "P2",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-EQ00",
+      "origin_name": "灾区安置点",
+      "destination_node": "NODE-EQ02",
+      "destination_name": "NODE-EQ02目的地",
+      "destination_lat": 23.19,
+      "destination_lng": 102.4012,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-EQ00",
+      "planned_route": [
+        "NODE-EQ00",
+        "NODE-EQ02"
+      ],
+      "current_route_index": 0,
+      "departure_time": "",
+      "deadline": "",
+      "contract_penalty_per_hour": 500,
+      "customer_id": "CUST-C-EQ02",
+      "customer_name": "灾区安置点客户",
+      "customer_type": "enterprise"
+    },
+    {
+      "cargo_id": "C-EQ03",
+      "order_no": "PO-EQ03",
+      "cargo_type": "supplies",
+      "description": "矿泉水食品",
+      "weight_tons": 10,
+      "volume_m3": 20,
+      "value_yuan": 15000,
+      "priority_level": "P3",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-EQ00",
+      "origin_name": "灾区物资点",
+      "destination_node": "NODE-EQ03",
+      "destination_name": "NODE-EQ03目的地",
+      "destination_lat": 22.7395,
+      "destination_lng": 101.46,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-EQ00",
+      "planned_route": [
+        "NODE-EQ00",
+        "NODE-EQ03"
+      ],
+      "current_route_index": 0,
+      "departure_time": "",
+      "deadline": "",
+      "contract_penalty_per_hour": 500,
+      "customer_id": "CUST-C-EQ03",
+      "customer_name": "灾区物资点客户",
+      "customer_type": "enterprise"
+    },
+    {
+      "cargo_id": "C-EQ04",
+      "order_no": "PO-EQ04",
+      "cargo_type": "normal",
+      "description": "电子设备",
+      "weight_tons": 2,
+      "volume_m3": 8,
+      "value_yuan": 80000,
+      "priority_level": "P3",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-EQ01",
+      "origin_name": "北向中转",
+      "destination_node": "NODE-EQ02",
+      "destination_name": "NODE-EQ02目的地",
+      "destination_lat": 23.19,
+      "destination_lng": 102.4012,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-EQ01",
+      "planned_route": [
+        "NODE-EQ01",
+        "NODE-EQ02"
+      ],
+      "current_route_index": 0,
+      "departure_time": "",
+      "deadline": "",
+      "contract_penalty_per_hour": 500,
+      "customer_id": "CUST-C-EQ04",
+      "customer_name": "北向中转客户",
+      "customer_type": "enterprise"
+    },
+    {
+      "cargo_id": "C-EQ05",
+      "order_no": "PO-EQ05",
+      "cargo_type": "supplies",
+      "description": "建材物资",
+      "weight_tons": 6,
+      "volume_m3": 25,
+      "value_yuan": 20000,
+      "priority_level": "P2",
+      "requires_cold_chain": false,
+      "is_hazardous": false,
+      "origin_node": "NODE-EQ02",
+      "origin_name": "南向重建",
+      "destination_node": "NODE-EQ03",
+      "destination_name": "NODE-EQ03目的地",
+      "destination_lat": 22.7395,
+      "destination_lng": 101.46,
+      "assigned_vehicle_id": "",
+      "current_status": "pending",
+      "current_location_node": "NODE-EQ02",
+      "planned_route": [
+        "NODE-EQ02",
+        "NODE-EQ03"
+      ],
+      "current_route_index": 0,
+      "departure_time": "",
+      "deadline": "",
+      "contract_penalty_per_hour": 500,
+      "customer_id": "CUST-C-EQ05",
+      "customer_name": "南向重建客户",
+      "customer_type": "enterprise"
+    }
+  ],
+  "evaluation": {
+    "config_id": "EVAL-RT-EQ",
+    "scenario_id": "RT-EQ-000",
+    "benchmark_cost": 5000,
+    "benchmark_delivery_time_hours": 48,
+    "weights": {
+      "timeliness": 0.3,
+      "economic": 0.25,
+      "feasibility": 0.25,
+      "compliance": 0.2
+    },
+    "bonus_rules": [
+      {
+        "rule": "first_submit_bonus",
+        "score": 5
+      }
+    ],
+    "penalty_rules": [
+      {
+        "rule": "timeout_penalty",
+        "score": -10
+      }
+    ],
+    "max_delay_hours": 48
+  },
+  "strategy_config": {
+    "mode": "time_pressure"
+  },
+  "realtime_source": {
+    "event_id": "AU.20260721194259.000",
+    "source": "中国地震台网",
+    "report_time": "2026-07-21 19:54:26"
+  },
+  "created_at": "2026-07-24T20:30"
+}
