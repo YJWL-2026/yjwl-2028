@@ -212,6 +212,7 @@ def load_state():
     # 保证关键 key 始终存在
     for key in ("classes", "tasks", "progress", "group_tasks", "knowledge_base"):
         _runtime_store.setdefault(key, {})
+    _runtime_store.setdefault("generated_cases", [])
 
 # 启动时加载持久化数据
 import json
@@ -3268,6 +3269,7 @@ def api_system_clear():
                 "data_sources": [],
                 "updates": [],
             },
+            "generated_cases": [],
         }
         # 删除持久化文件
         if STATE_FILE.exists():
