@@ -204,10 +204,14 @@ def load_state():
         try:
             with open(STATE_FILE, "r", encoding="utf-8") as f:
                 loaded = json.load(f)
-            _runtime_store = loaded
+            # 用 update 合并而非替换，避免丢失默认 key（classes/tasks 等）
+            _runtime_store.update(loaded)
             print(f"[LOAD] 已从 {STATE_FILE} 恢复运行时数据")
         except Exception as e:
             print(f"[LOAD ERROR] {e}，使用初始数据")
+    # 保证关键 key 始终存在
+    for key in ("classes", "tasks", "progress", "group_tasks"):
+        _runtime_store.setdefault(key, {})
 
 # 启动时加载持久化数据
 import json
