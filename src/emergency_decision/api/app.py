@@ -204,14 +204,60 @@ def load_state():
         try:
             with open(STATE_FILE, "r", encoding="utf-8") as f:
                 loaded = json.load(f)
-            _runtime_store = loaded
+            # 用 update 合并而非替换，避免丢失默认 key（classes/tasks 等）
+            _runtime_store.update(loaded)
             print(f"[LOAD] 已从 {STATE_FILE} 恢复运行时数据")
         except Exception as e:
             print(f"[LOAD ERROR] {e}，使用初始数据")
+    # 保证关键 key 始终存在
+    for key in ("classes", "tasks", "progress", "group_tasks", "knowledge_base"):
+        _runtime_store.setdefault(key, {})
 
 # 启动时加载持久化数据
 import json
 load_state()
+
+# 兜底：如果加载后 classes 为空（文件损坏或被误清空），自动重建默认班级
+_DEFAULT_CLASS_ID = "CLS-202601"
+if not _runtime_store.get("classes") or _DEFAULT_CLASS_ID not in _runtime_store["classes"]:
+    _default_students = [
+        {"student_id": f"student{i:02d}", "name": VIRTUAL_USERS[f"student{i:02d}"]["name"],
+         "avatar": VIRTUAL_USERS[f"student{i:02d}"]["avatar"]}
+        for i in range(1, 21)
+    ]
+    _runtime_store.setdefault("classes", {})
+    _runtime_store["classes"][_DEFAULT_CLASS_ID] = {
+        "name": "2026级物流管理1班",
+        "teacher": "王老师",
+        "teacher_id": "teacher01",
+        "students": _default_students,
+        "groups": [],
+        "created_at": time.strftime("%Y-%m-%d %H:%M"),
+    }
+    print(f"[AUTO] 默认班级已兜底重建: {_DEFAULT_CLASS_ID} (20名学生)")
+
+@app.before_request
+def auto_load_state():
+    """每次请求前从文件同步状态（解决多worker容器的数据一致性问题）"""
+    load_state()
+    # 兜底：如果加载后 classes 为空，自动重建默认班级
+    if not _runtime_store.get("classes"):
+        _runtime_store.setdefault("classes", {})
+        if _DEFAULT_CLASS_ID not in _runtime_store["classes"]:
+            _default_students = [
+                {"student_id": f"student{i:02d}", "name": VIRTUAL_USERS[f"student{i:02d}"]["name"],
+                 "avatar": VIRTUAL_USERS[f"student{i:02d}"]["avatar"]}
+                for i in range(1, 21)
+            ]
+            _runtime_store["classes"][_DEFAULT_CLASS_ID] = {
+                "name": "2026级物流管理1班",
+                "teacher": "王老师",
+                "teacher_id": "teacher01",
+                "students": _default_students,
+                "groups": [],
+                "created_at": time.strftime("%Y-%m-%d %H:%M"),
+            }
+            print(f"[AUTO] 请求前兜底重建默认班级: {_DEFAULT_CLASS_ID}")
 
 @app.after_request
 def auto_save_state(response):
@@ -487,24 +533,6 @@ _runtime_store.setdefault("classes", {})       # class_id -> {name, teacher, stu
 _runtime_store.setdefault("tasks", {})          # task_id -> {class_id, scenario_id, title, assignee, status, deadline}
 _runtime_store.setdefault("progress", {})      # student_id -> [{task_id, status, submit_time, score}]
 _runtime_store.setdefault("group_tasks", {})    # gtask_id -> {class_id, group_ids, scenario_id, title, deadline, created_at, status}
-
-# 自动创建默认班级（含20名学生）—— 服务器启动时执行
-_DEFAULT_CLASS_ID = "CLS-202601"
-if _DEFAULT_CLASS_ID not in _runtime_store["classes"]:
-    _default_students = [
-        {"student_id": f"student{i:02d}", "name": VIRTUAL_USERS[f"student{i:02d}"]["name"],
-         "avatar": VIRTUAL_USERS[f"student{i:02d}"]["avatar"]}
-        for i in range(1, 21)
-    ]
-    _runtime_store["classes"][_DEFAULT_CLASS_ID] = {
-        "name": "2026级物流管理1班",
-        "teacher": "王老师",
-        "teacher_id": "teacher01",
-        "students": _default_students,
-        "groups": [],
-        "created_at": time.strftime("%Y-%m-%d %H:%M"),
-    }
-    print(f"[AUTO] 默认班级已创建: {_DEFAULT_CLASS_ID} (20名学生)")
 
 @app.route("/api/manage/classes", methods=["GET"])
 def api_get_classes():
@@ -3216,9 +3244,15 @@ def _extract_map_data(scenario) -> dict:
 
 @app.route("/api/system/clear", methods=["POST"])
 def api_system_clear():
-    """清空所有账号的所有历史操作"""
+    """清空所有账号的所有历史操作（保留班级与学生名单）"""
+    global _runtime_store
     try:
-        global _runtime_store
+        # 备份班级配置（班级和学生名单是基础设施，不应被清理）
+        classes_backup = _runtime_store.get("classes", {})
+        # 清空班级内的动态分组（新一轮教学需重新分组）
+        for cid in classes_backup:
+            classes_backup[cid]["groups"] = []
+
         _runtime_store = {
             "sessions": {},
             "results": {},
@@ -3226,12 +3260,20 @@ def api_system_clear():
             "behavior_events": {},
             "group_tasks": {},
             "progress": {},
+            "classes": classes_backup,
+            "tasks": {},
+            "knowledge_base": {
+                "entities": [],
+                "relations": [],
+                "data_sources": [],
+                "updates": [],
+            },
         }
         # 删除持久化文件
         if STATE_FILE.exists():
             STATE_FILE.unlink()
         save_state()
-        return jsonify({"status": "ok", "message": "所有数据已清空"})
+        return jsonify({"status": "ok", "message": "所有操作数据已清空，班级配置已保留"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
