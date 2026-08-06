@@ -3245,6 +3245,7 @@ def _extract_map_data(scenario) -> dict:
 @app.route("/api/system/clear", methods=["POST"])
 def api_system_clear():
     """清空所有账号的所有历史操作（保留班级与学生名单）"""
+    global _runtime_store
     try:
         # 备份班级配置（班级和学生名单是基础设施，不应被清理）
         classes_backup = _runtime_store.get("classes", {})
@@ -3252,7 +3253,6 @@ def api_system_clear():
         for cid in classes_backup:
             classes_backup[cid]["groups"] = []
 
-        global _runtime_store
         _runtime_store = {
             "sessions": {},
             "results": {},
